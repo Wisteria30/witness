@@ -1,20 +1,206 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
-BIN_DIR="$PLUGIN_DIR/bin"
+RED='\033[91m'
+GREEN='\033[92m'
+YELLOW='\033[93m'
+RESET='\033[0m'
 
-if ! command -v cargo >/dev/null 2>&1; then
-  echo "code-guardrails: cargo is required to build the Rust engine" >&2
+ISSUES=0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="Wisteria30/witness"
+BIN_DIR="$SCRIPT_DIR/bin"
+ENGINE_BIN="$BIN_DIR/witness-engine"
+
+check_version() {
+  local tool="$1"
+  local current="$2"
+  local minimum="$3"
+  local cur_major cur_minor min_major min_minor
+  cur_major=$(echo "$current" | cut -d. -f1)
+  cur_minor=$(echo "$current" | cut -d. -f2)
+  min_major=$(echo "$minimum" | cut -d. -f1)
+  min_minor=$(echo "$minimum" | cut -d. -f2)
+  if [ "$cur_major" -gt "$min_major" ] 2>/dev/null || \
+     { [ "$cur_major" -eq "$min_major" ] 2>/dev/null && [ "$cur_minor" -ge "$min_minor" ] 2>/dev/null; }; then
+    echo -e "  ${GREEN}version ${current} >= ${minimum}${RESET}"
+    return 0
+  else
+    echo -e "  ${RED}version ${current} < ${minimum} (need ${minimum}+)${RESET}"
+    return 1
+  fi
+}
+
+install_tool() {
+  local tool="$1"
+  local brew_pkg="$2"
+  local npm_pkg="$3"
+
+  echo -e "${YELLOW}MISSING${RESET} $tool — installing..."
+
+  if command -v brew &>/dev/null; then
+    brew install "$brew_pkg" 2>/dev/null && echo -e "  ${GREEN}installed via brew${RESET}" && return 0
+  fi
+
+  if command -v npm &>/dev/null; then
+    npm install -g "$npm_pkg" 2>/dev/null && echo -e "  ${GREEN}installed via npm${RESET}" && return 0
+  fi
+
+  if command -v cargo &>/dev/null; then
+    cargo install "$brew_pkg" --locked 2>/dev/null && echo -e "  ${GREEN}installed via cargo${RESET}" && return 0
+  fi
+
+  echo -e "  ${RED}failed${RESET} — install manually: brew install $brew_pkg"
+  return 1
+}
+
+ensure_tool() {
+  local cmd="$1"
+  local brew_pkg="$2"
+  local npm_pkg="$3"
+  local min_version="$4"
+  local version_cmd="$5"
+
+  if command -v "$cmd" &>/dev/null; then
+    echo -e "${GREEN}OK${RESET} $cmd ($(command -v "$cmd"))"
+    local ver
+    ver=$(eval "$version_cmd" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
+    check_version "$cmd" "$ver" "$min_version" || ISSUES=1
+  else
+    install_tool "$cmd" "$brew_pkg" "$npm_pkg" || ISSUES=1
+    if command -v "$cmd" &>/dev/null; then
+      echo -e "${GREEN}OK${RESET} $cmd ($(command -v "$cmd"))"
+      local ver
+      ver=$(eval "$version_cmd" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
+      check_version "$cmd" "$ver" "$min_version" || ISSUES=1
+    fi
+  fi
+}
+
+detect_target() {
+  local os arch
+  os="$(uname -s)"
+  arch="$(uname -m)"
+
+  case "$os" in
+    Darwin)
+      case "$arch" in
+        arm64)  echo "aarch64-apple-darwin" ;;
+        x86_64) echo "x86_64-apple-darwin" ;;
+        *)      echo "" ;;
+      esac
+      ;;
+    Linux)
+      case "$arch" in
+        aarch64) echo "aarch64-unknown-linux-gnu" ;;
+        x86_64)  echo "x86_64-unknown-linux-gnu" ;;
+        *)       echo "" ;;
+      esac
+      ;;
+    *) echo "" ;;
+  esac
+}
+
+download_binary() {
+  local target="$1"
+  local plugin_json="$SCRIPT_DIR/.claude-plugin/plugin.json"
+  local version archive_name url
+
+  version="v$(jq -r '.version // ""' "$plugin_json" 2>/dev/null || echo "")"
+  if [ -z "$version" ] || [ "$version" = "v" ]; then
+    return 1
+  fi
+
+  archive_name="witness-engine-${target}.tar.gz"
+  url="https://github.com/${REPO}/releases/download/${version}/${archive_name}"
+
+  echo "  Downloading ${version} for ${target}..."
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  trap 'rm -rf "$tmp_dir"' RETURN
+
+  if curl -fsSL "$url" -o "$tmp_dir/$archive_name" 2>/dev/null; then
+    mkdir -p "$BIN_DIR"
+    tar xzf "$tmp_dir/$archive_name" -C "$BIN_DIR"
+    chmod +x "$ENGINE_BIN"
+    return 0
+  fi
+
+  echo "  ${version} not found, trying latest..."
+  local latest
+  latest=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+    | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"//;s/".*//')
+  if [ -n "${latest:-}" ]; then
+    url="https://github.com/${REPO}/releases/download/${latest}/${archive_name}"
+    if curl -fsSL "$url" -o "$tmp_dir/$archive_name" 2>/dev/null; then
+      mkdir -p "$BIN_DIR"
+      tar xzf "$tmp_dir/$archive_name" -C "$BIN_DIR"
+      chmod +x "$ENGINE_BIN"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+echo "witness setup"
+echo "============="
+echo ""
+
+# --- ast-grep 0.14+ ---
+ensure_tool "ast-grep" "ast-grep" "@ast-grep/cli" "0.14" "ast-grep --version"
+
+# --- ripgrep 14.0+ ---
+ensure_tool "rg" "ripgrep" "ripgrep" "14.0" "rg --version"
+
+echo ""
+if [ "$ISSUES" -ne 0 ]; then
+  echo -e "${RED}Some dependencies are missing or outdated. Fix them and re-run setup.${RESET}"
   exit 1
 fi
 
-mkdir -p "$BIN_DIR"
+# --- Engine binary ---
+if [ -x "$ENGINE_BIN" ]; then
+  echo -e "${GREEN}OK${RESET} engine binary already exists"
+  echo ""
+  echo -e "${GREEN}Setup complete. witness is ready.${RESET}"
+  exit 0
+fi
 
-cargo build --release --manifest-path "$PLUGIN_DIR/Cargo.toml" --bin code-guardrails-engine
-cp "$PLUGIN_DIR/target/release/code-guardrails-engine" "$BIN_DIR/code-guardrails-engine"
-chmod +x "$BIN_DIR/code-guardrails-engine"
-chmod +x "$PLUGIN_DIR"/hooks/*.sh
-chmod +x "$PLUGIN_DIR"/scripts/*.sh 2>/dev/null || true
+# 1. Try downloading pre-built binary from GitHub Releases
+TARGET=$(detect_target)
+if [ -n "$TARGET" ] && command -v curl &>/dev/null; then
+  echo "Trying pre-built binary for ${TARGET}..."
+  if download_binary "$TARGET"; then
+    echo -e "${GREEN}OK${RESET} engine binary downloaded"
+    echo ""
+    echo -e "${GREEN}Setup complete. witness is ready.${RESET}"
+    exit 0
+  fi
+  echo -e "${YELLOW}WARN${RESET} no pre-built binary available — falling back to cargo build"
+fi
 
-echo "code-guardrails: engine installed at $BIN_DIR/code-guardrails-engine"
+# 2. Fallback: build from source
+if command -v cargo &>/dev/null && command -v rustc &>/dev/null; then
+  echo -e "${GREEN}OK${RESET} cargo ($(command -v cargo))"
+  mkdir -p "$BIN_DIR"
+  if cargo build --manifest-path "$SCRIPT_DIR/Cargo.toml" --release --bin witness-engine; then
+    cp "$SCRIPT_DIR/target/release/witness-engine" "$ENGINE_BIN"
+    chmod +x "$ENGINE_BIN"
+    echo -e "${GREEN}OK${RESET} engine built from source"
+  else
+    echo -e "${RED}FAIL${RESET} cargo build failed"
+    ISSUES=1
+  fi
+else
+  echo -e "${RED}FAIL${RESET} No pre-built binary and Rust toolchain not found"
+  echo -e "  Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+  ISSUES=1
+fi
+
+echo ""
+if [ "$ISSUES" -ne 0 ]; then
+  echo -e "${RED}Engine setup failed. See errors above.${RESET}"
+  exit 1
+fi
+echo -e "${GREEN}Setup complete. witness is ready.${RESET}"

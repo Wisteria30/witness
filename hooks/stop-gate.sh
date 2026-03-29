@@ -2,9 +2,9 @@
 set -euo pipefail
 
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.code-guardrails-data}"
+DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
 REPORT_DIR="$DATA_DIR/reports"
-ENGINE_BIN="$PLUGIN_DIR/bin/code-guardrails-engine"
+ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 
 if [ ! -x "$ENGINE_BIN" ]; then
   exit 0
@@ -24,7 +24,7 @@ case "$STATUS" in
     exit 0
     ;;
   *)
-    echo "code-guardrails: stop gate error (fail-open)" >&2
+    echo "witness: stop gate error (fail-open)" >&2
     exit 0
     ;;
 esac

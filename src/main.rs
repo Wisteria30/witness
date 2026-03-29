@@ -24,6 +24,13 @@ const DEFAULT_TEST_GLOBS: &[&str] = &[
     "**/__tests__/**",
     "**/conftest.py",
 ];
+const DEFAULT_SKIP_GLOBS: &[&str] = &[
+    "**/generated/**",
+    "**/openapi/**",
+    "**/swagger/**",
+    "**/codegen/**",
+    "**/__generated__/**",
+];
 const OWNER_PRECEDENCE: &[&str] = &[
     "tests",
     "composition_root",
@@ -681,7 +688,7 @@ fn scan_file(
     file: &Path,
     scan_root_override: Option<&Path>,
 ) -> Result<ScanBundle, String> {
-    let test_matcher = build_patterns(&common.test_globs)?;
+    let skip_matcher = build_skip_matcher(&common.test_globs)?;
     let scan_root = match scan_root_override {
         Some(root) => root
             .canonicalize()
@@ -700,7 +707,7 @@ fn scan_file(
         .map_err(|err| format!("failed to resolve {}: {err}", joined_file.display()))?;
 
     let scanned_files = vec![canonical_file.clone()];
-    if matches_test_globs(&test_matcher, &canonical_file, &scan_root) {
+    if matches_skip_globs(&skip_matcher, &canonical_file, &scan_root) {
         return Ok(ScanBundle {
             scan_root,
             scanned_files,
@@ -743,13 +750,13 @@ fn scan_tree(
     let scan_root = root
         .canonicalize()
         .map_err(|err| format!("failed to resolve {}: {err}", root.display()))?;
-    let test_matcher = build_patterns(&common.test_globs)?;
+    let skip_matcher = build_skip_matcher(&common.test_globs)?;
     let mut grouped_files: HashMap<Vec<String>, Vec<PathBuf>> = HashMap::new();
     let mut scanned_files: Vec<PathBuf> = Vec::new();
     let mut supplemental = Vec::new();
 
     for path in ripgrep_candidate_files(&scan_root)? {
-        if !is_supported_source(&path) || matches_test_globs(&test_matcher, &path, &scan_root) {
+        if !is_supported_source(&path) || matches_skip_globs(&skip_matcher, &path, &scan_root) {
             continue;
         }
 
@@ -841,11 +848,17 @@ const GLOB_OPTS: MatchOptions = MatchOptions {
     case_sensitive: true,
 };
 
-fn matches_test_globs(matcher: &[Pattern], path: &Path, scan_root: &Path) -> bool {
+fn matches_skip_globs(matcher: &[Pattern], path: &Path, scan_root: &Path) -> bool {
     let relative = path.strip_prefix(scan_root).unwrap_or(path);
     matcher
         .iter()
         .any(|pattern| pattern.matches_path_with(relative, GLOB_OPTS))
+}
+
+fn build_skip_matcher(test_globs: &[String]) -> Result<Vec<Pattern>, String> {
+    let mut all: Vec<String> = test_globs.to_vec();
+    all.extend(DEFAULT_SKIP_GLOBS.iter().map(|s| s.to_string()));
+    build_patterns(&all)
 }
 
 fn is_supported_source(path: &Path) -> bool {
@@ -1011,12 +1024,12 @@ fn read_inline_rules(rule_paths: &[PathBuf]) -> Result<String, String> {
     for rule_path in rule_paths {
         let raw = fs::read_to_string(rule_path)
             .map_err(|err| format!("failed to read {}: {err}", rule_path.display()))?;
-        parts.push(strip_files_ignores(&raw));
+        parts.push(strip_ast_grep_filters(&raw));
     }
     Ok(parts.join("\n---\n"))
 }
 
-fn strip_files_ignores(rule_text: &str) -> String {
+fn strip_ast_grep_filters(rule_text: &str) -> String {
     let mut result = Vec::new();
     let mut skip_block = false;
     for line in rule_text.lines() {
@@ -1617,7 +1630,7 @@ fn scan_stop(common: &CommonOptions) -> Result<StopScanResult, String> {
     let report_dir = common
         .report_dir
         .clone()
-        .unwrap_or_else(|| common.config_dir.join(".code-guardrails-data/reports"));
+        .unwrap_or_else(|| common.config_dir.join(".witness-data/reports"));
     let pending_dir = report_dir.join("pending");
 
     if !pending_dir.is_dir() {

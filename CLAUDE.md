@@ -4,7 +4,7 @@ This file guides Claude Code while working in this repository.
 
 ## What is this project?
 
-code-guardrails is a Claude Code plugin that detects and repairs two specific design failures in AI-generated production code:
+witness is a Claude Code plugin that detects and repairs two specific design failures in AI-generated production code:
 
 - **unowned elimination** of absence or failure into a value
 - **unproved substitution** of runtime implementations
@@ -25,10 +25,10 @@ cargo fmt --check
 cargo clippy -- -D warnings
 cargo test --test metadata_validation
 
-./bin/code-guardrails-engine scan-tree --root . --config-dir .
-./bin/code-guardrails-engine scan-file --file path/to/file.py --config-dir .
-cat hook-input.json | ./bin/code-guardrails-engine scan-hook --config-dir . --report-dir /tmp/cg-reports
-./bin/code-guardrails-engine scan-stop --config-dir . --report-dir /tmp/cg-reports
+./bin/witness-engine scan-tree --root . --config-dir .
+./bin/witness-engine scan-file --file path/to/file.py --config-dir .
+cat hook-input.json | ./bin/witness-engine scan-hook --config-dir . --report-dir /tmp/cg-reports
+./bin/witness-engine scan-stop --config-dir . --report-dir /tmp/cg-reports
 
 scripts/release.sh <version>
 ```
@@ -87,8 +87,10 @@ Never dump full scan output into `additionalContext`. The main session should on
 ### Skills and agent
 
 - `/scan` runs a full guardrail scan in a forked context and summarizes owner-layer work
-- `/repair-guardrail` performs multi-file repair using the doctrine in `skills/repair-guardrail/doctrine.md`
+- `/repair` dispatches 5 parallel `guardrail-repairer` agents (worktree-isolated) to fix all pending reports at once
 - `guardrail-repairer` is the dedicated repair subagent for isolated, high-volume owner-layer refactors
+
+**After `/scan` returns, never auto-start repairs.** Present the report and wait for the user to choose which reports to repair. The user controls the repair workflow.
 
 ## Hot-path constraints
 

@@ -1,4 +1,4 @@
-# Migration guide: current code-guardrails -> vNext
+# Migration guide: current witness -> vNext
 
 This repository keeps the same core stack as the current public plugin—Rust orchestration, `ripgrep` for discovery, and `ast-grep` for syntax rules—but changes what happens after detection.
 
@@ -24,7 +24,7 @@ After:
 
 - the sync hook stores a detailed JSON report under `${CLAUDE_PLUGIN_DATA}/reports/pending/`
 - Claude only receives a short capsule plus the report path
-- the repair doctrine lives in `skills/repair-guardrail/`
+- the repair doctrine lives in `skills/repair/`
 - the heavy fix path is delegated to `agents/guardrail-repairer.md`
 
 ## 3. Add authoritative stop gates
@@ -70,4 +70,4 @@ Keep `CLAUDE.md` short and stable:
 ## 7. Use the new commands
 
 - `/scan` for triage in forked context
-- `/repair-guardrail <report-path-or-file>` for actual repair work
+- `/repair <report-path-or-file>` for actual repair work

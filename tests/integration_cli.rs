@@ -10,7 +10,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn engine_bin() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_code-guardrails-engine"))
+    PathBuf::from(env!("CARGO_BIN_EXE_witness-engine"))
 }
 
 fn fixture_path(relative: &str) -> PathBuf {
@@ -22,7 +22,7 @@ fn unique_temp_dir(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("code-guardrails-{name}-{suffix}"));
+    let dir = std::env::temp_dir().join(format!("witness-{name}-{suffix}"));
     fs::create_dir_all(&dir).unwrap();
     dir
 }

@@ -1,217 +1,277 @@
-# code-guardrails vNext
+# witness
 
-code-guardrails is a Claude Code plugin for a narrower and more valuable target than “bad patterns” in the abstract:
+**Push AI-generated fallbacks and test doubles back to their rightful owner layer, with proof.**
 
-- unowned elimination of absence or failure into a value
-- unproved substitution of runtime implementations
+AI coding tools are fast. But they silently paper over failures with `?? "default"`, swallow exceptions with `pass`, and leave `FakeRepository` in production. Miss it in review, and it ships.
 
-In practice, that means two families of bugs that AI coding tools keep introducing into production code:
+witness doesn't just block bad syntax. It classifies each violation by owner layer, demands a lawful remedy, and repairs at the architecture level — not the line level.
 
-- implicit fallbacks such as `.get(key, default)`, `??`, `||`, empty `catch`, or equivalent rewrites
-- runtime test doubles or test-only semantics leaking into the production dependency graph
+---
 
-The current public version blocks obvious syntax. This repository packages the next version as a repair system. It still uses a fast Rust verifier plus ast-grep and ripgrep, but it no longer optimizes for “find a string and block.” It optimizes for “push the code back to the owning layer, with a machine-checkable witness.”
+## Install
 
-## What changed in vNext
+Run inside Claude Code:
 
-The design is split into three layers:
+```
+/plugin marketplace add Wisteria30/witness
+/plugin install witness@witness-marketplace
+```
 
-- **Verifier**: a deterministic Rust engine shells out to `ripgrep` for candidate discovery and `ast-grep` for syntax rules, then enriches findings with owner guesses, legal remedies, forbidden moves, registry-backed approval checks, and pending report files.
-- **Doctrine**: skills and project instructions teach the repair playbook instead of a longer denylist.
-- **Repairer**: a dedicated subagent is optimized for multi-file owner-layer refactors and proof-carrying repairs.
+Restart Claude Code. Verify with `/witness:scan`.
 
-The biggest behavioral changes are:
+Dependencies (`ast-grep`, `ripgrep`) are auto-installed by the setup script. No Rust required — pre-built binaries are downloaded from GitHub Releases.
 
-1. **No more full findings in main context.** The hot-path hook stores a detailed JSON report under `${CLAUDE_PLUGIN_DATA}/reports/` and returns only a short capsule to Claude.
-2. **Registry-backed approvals.** `policy-approved:` comments are only honored when the identifier exists in `policy/defaults.yml` and the current file belongs to an allowed layer.
-3. **Stop gate.** `PostToolUse` still blocks immediately for local feedback, but unresolved reports also block `Stop` and `SubagentStop`, which makes deeper multi-file repairs possible without spending the main conversation on giant findings blobs.
-4. **Owner-layer doctrine.** Every violation is classified into an owner layer and a small set of legal remedies. The default answer is never “rename the variable and move on.”
+### Share with your team
 
-## Core doctrine
+```bash
+cp -Rf ~/.claude/plugins/witness .claude/plugins/witness
+rm -rf .claude/plugins/witness/.git
+git add .claude/plugins/witness && git commit -m "chore: add witness plugin"
+```
+
+### Local development
+
+```bash
+claude --plugin-dir ./path-to-witness
+```
+
+After changes, run `/reload-plugins` in-session.
+
+---
+
+## What It Catches
+
+### Test doubles in production code
+
+Flags `mock` / `stub` / `fake` identifiers and test-support imports in non-test files.
+
+```python
+# NG
+mock_client = MockHttpClient()
+from unittest.mock import patch
+```
+
+```python
+# OK — inside test files (test_*.py, **/tests/**, etc.)
+mock_client = MockHttpClient()
+```
+
+### Unapproved fallbacks
+
+Flags patterns that silently eliminate absence or swallow errors.
+
+#### Python
+
+```python
+# NG — silent defaults
+timeout = config.get("timeout", 30)
+name = user_name or "unknown"
+port = os.getenv("PORT", "8080")
+
+# NG — swallowed exception
+try:
+    connect()
+except ConnectionError:
+    pass
+```
+
+```python
+# OK — exception handled properly
+try:
+    connect()
+except ConnectionError as e:
+    logger.error(f"Connection failed: {e}")
+    raise ServiceUnavailable("DB unreachable") from e
+
+# OK — boundary parser (the witness way)
+class Config(BaseModel):
+    timeout: int
+    port: int
+
+config = Config.model_validate(raw_settings)
+```
+
+#### TypeScript
+
+```typescript
+// NG — silent defaults
+const port = config.port ?? 3000;
+const name = input || "default";
+
+// NG — swallowed errors
+try { await fetch(url); } catch {}
+fetch(url).catch(() => null);
+```
+
+```typescript
+// OK — typed error
+try {
+  await fetch(url);
+} catch (e) {
+  throw new FetchError("request failed", { cause: e });
+}
+```
+
+### Equivalent rewrites (also caught)
+
+```python
+# NG — same fallback, different syntax
+tool_use_id = tool_use["toolUseId"] if "toolUseId" in tool_use else "tool"
+```
+
+```python
+# The real fix: boundary parser
+class ToolUsePayload(BaseModel):
+    toolUseId: str
+
+payload = ToolUsePayload.model_validate(event.tool_use)
+tool_use_id = payload.toolUseId
+```
+
+---
+
+## How It Works
+
+witness is split into three layers:
+
+| Layer | What it does | Where it runs |
+|-------|-------------|---------------|
+| **Verifier** | Detect, classify, persist reports | Rust engine + ast-grep + ripgrep (sync hook, < 100ms) |
+| **Doctrine** | Teach owner-layer repair playbook | Skills + CLAUDE.md |
+| **Repairer** | Multi-file architectural repair | 5 parallel worktree-isolated agents |
+
+The hot-path hook returns a short capsule to Claude — never full findings. Detailed reports are persisted to disk. Heavy repair runs in isolated subagents, not in main context.
+
+---
+
+## Core Doctrine
 
 A fallback is an effect handler, not a convenience.
 A production substitute is an adapter, not a fake.
 
-When a guardrail fires:
+When a violation fires:
 
-1. Find the owner layer: `boundary`, `domain`, `application`, `infrastructure`, `composition_root`, or `tests`.
-2. Choose exactly one legal remedy:
-   - approved policy API
-   - boundary parser or settings model
-   - `Optional`/union + exhaustive handling
-   - typed exception / contract violation
-   - explicit resilience adapter
-   - move double to tests
-   - promote substitute to a first-class adapter + contract tests
-3. Add one witness:
-   - schema/parser validation
-   - exhaustiveness check
-   - architecture/import rule
-   - contract/property/stateful test
-   - registered approval id
-4. Never “fix” by rename-only or syntax-equivalent rewrites.
+1. **Classify** the owner layer: `boundary` / `domain` / `application` / `infrastructure` / `composition_root` / `tests`
+2. **Challenge** the optionality: is the absent case specified? If not, eliminate it.
+3. **Choose** exactly one legal remedy
+4. **Add** one machine-checkable witness
+5. **Never** rename, rewrite to equivalent syntax, or add a new inline default
 
-## Repository layout
+---
 
-```text
-code-guardrails/
-├── .claude-plugin/
-├── agents/
-├── docs/
-├── fixtures/
-├── hooks/
-├── policy/
-├── rules/
-├── scripts/
-├── skills/
-├── src/
-├── tests/
-├── CHANGELOG.md
-├── CLAUDE.md
-├── Cargo.toml
-├── marketplace.json
-├── README.md
-├── setup
-└── sgconfig.yml
+## Detection Rules
+
+### Python (12 rules)
+
+| Rule | Pattern | Example |
+|------|---------|---------|
+| `py-no-fallback-get-default` | `.get(key, default)` | `d.get("k", 0)` |
+| `py-no-fallback-bool-or` | `x = a or b` | `name = val or "default"` |
+| `py-no-fallback-getattr-default` | `getattr(o, n, default)` | `getattr(o, "x", None)` |
+| `py-no-fallback-next-default` | `next(iter, default)` | `next(gen, None)` |
+| `py-no-fallback-os-getenv-default` | `os.getenv(k, default)` | `os.getenv("PORT", "8080")` |
+| `py-no-fallback-contextlib-suppress` | `contextlib.suppress(...)` | `with suppress(KeyError):` |
+| `py-no-fallback-except-return-default` | `except: return default` | `except E: return []` |
+| `py-no-fallback-conditional-*` | `x if cond else default` | `x if x in d else "fallback"` |
+| `py-no-swallowing-except-pass` | `except ...: pass` | `except ValueError: pass` |
+| `py-no-test-double-identifier` | `mock\|stub\|fake` identifier | `mock_client` |
+| `py-no-test-double-unittest-mock` | `import unittest.mock` | `from unittest.mock import patch` |
+
+### TypeScript (11 rules)
+
+| Rule | Pattern | Example |
+|------|---------|---------|
+| `ts-no-fallback-nullish` | `a ?? b` | `port ?? 3000` |
+| `ts-no-fallback-or` | `a \|\| b` | `val \|\| "default"` |
+| `ts-no-fallback-nullish-assign` | `a ??= b` | `cache ??= new Map()` |
+| `ts-no-fallback-or-assign` | `a \|\|= b` | `opt.x \|\|= 5` |
+| `ts-no-fallback-ternary-default` | `x !== undefined ? x : d` | `v != null ? v : 0` |
+| `ts-no-fallback-lookup-else-default` | `x ? x[k] : default` | `obj ? obj.id : "none"` |
+| `ts-no-catch-return-default` | `catch { return default }` | `catch(e) { return [] }` |
+| `ts-no-empty-catch` | `catch {}` | `catch(e) {}` |
+| `ts-no-promise-catch-default` | `.catch(() => default)` | `.catch(() => null)` |
+| `ts-no-test-double-identifier` | `mock\|stub\|fake` identifier | `mockFetch` |
+| `ts-no-test-double-import` | test-support import | `import from "sinon"` |
+
+---
+
+## Legal Remedies
+
+| Remedy | When to use |
+|--------|------------|
+| `eliminate_optionality` | Absent case has no spec. Make it required. |
+| `approved_policy_api` | Default is specified. Use a blessed policy API. |
+| `boundary_parser` | Untrusted input. Parse once at the edge. |
+| `optional_exhaustive_handling` | Value is truly optional per spec. Handle all branches. |
+| `typed_exception` | State is invalid. Raise typed error. |
+| `resilience_adapter` | Infra policy. Retry/cache/secondary with metrics. |
+| `move_double_to_tests` | Test double leaked into production. Delete from runtime. |
+| `promote_to_first_class_adapter` | Alternate implementation is legitimate. Name it, contract-test it. |
+
+---
+
+## Approval Model
+
+Intentional fallbacks can be approved with an adjacent comment:
+
+```python
+# policy-approved: REQ-123 explicit locale default
+lang = LocalePolicy.default_locale(payload.get("lang"))
 ```
 
-## Hook lifecycle
+Approval is **registry-backed**: the ID must exist in `policy/defaults.yml` and the file must belong to an allowed owner layer. Invalid or unregistered IDs are reported as violations.
 
-- `SessionStart` ensures the binary is built and version-synced.
-- `PostToolUse` on `Edit|Write` runs a synchronous classifier that writes report files and returns a short block response.
-- `PostToolUse` also runs an async audit that refreshes pending reports in the background.
-- `Stop` and `SubagentStop` refuse to finish while unresolved pending reports remain.
+---
 
-Detailed hook behavior is documented in [`docs/architecture.md`](docs/architecture.md), [`docs/report-format.md`](docs/report-format.md), and [`docs/migration-guide.md`](docs/migration-guide.md).
+## Policy Files
 
-## Policy files
+| File | Purpose |
+|------|---------|
+| `policy/ownership.yml` | Maps file globs to owner layers |
+| `policy/defaults.yml` | Registers approved default IDs and blessed symbols |
+| `policy/adapters.yml` | Declares lawful runtime adapters and contract test paths |
 
-Three policy files drive ownership and lawful escape hatches:
+These are project-specific. Configure them for your codebase.
 
-- [`policy/ownership.yml`](policy/ownership.yml) maps file globs to owner layers.
-- [`policy/defaults.yml`](policy/defaults.yml) registers approved default IDs and their blessed symbols.
-- [`policy/adapters.yml`](policy/adapters.yml) declares lawful runtime adapters and their contract suites.
+---
 
-Treat these as project-specific configuration. The defaults included here are intentionally opinionated examples.
+## Skills
 
-## Commands
+| Skill | What it does |
+|-------|-------------|
+| `/witness:scan` | Full project scan. Reports violations by owner layer. Read-only. |
+| `/witness:repair` | Dispatches 5 parallel repair agents in isolated worktrees. Challenges optionality, applies lawful remedies, asks user for ambiguous cases. |
+| `/witness:add-rule` | Guided workflow for adding a new ast-grep detection rule. |
 
-```bash
-# Build the Rust engine
-cargo build --release
+---
 
-# Run tests
-cargo test --all-targets
-
-# Lint
-cargo fmt --check
-cargo clippy -- -D warnings
-python scripts/check-metadata.py
-
-# Full project scan
-./bin/code-guardrails-engine scan-tree --root . --config-dir .
-
-# Single file scan
-./bin/code-guardrails-engine scan-file --file path/to/file.py --config-dir .
-
-# Hook-mode scan (reads Claude hook JSON from stdin)
-cat hook-input.json | ./bin/code-guardrails-engine scan-hook --config-dir . --report-dir /tmp/cg-reports
-
-# Stop gate
-./bin/code-guardrails-engine scan-stop --report-dir /tmp/cg-reports --config-dir .
-```
-
-The engine exits `0` when clean, `1` when violations or pending reports exist, and `2` on tool/setup errors.
-
-## Installation
-
-Prerequisites:
-
-- Claude Code
-- `ast-grep` 0.14+
-- `ripgrep` 14+
-- Rust 1.85+
-- `jq` 1.6+ (hooks and release script)
-
-```bash
-brew install ast-grep ripgrep
-curl https://sh.rustup.rs -sSf | sh
-```
-
-Inside Claude Code:
-
-```bash
-/plugin marketplace add Wisteria30/code-guardrails
-/plugin install code-guardrails@code-guardrails-marketplace
-```
-
-Restart Claude Code, then run `/scan`.
-
-## Suggested project CLAUDE.md snippet
+## Add to your CLAUDE.md
 
 ```markdown
 ## AI Code Policy
 
-code-guardrails hook is active. Every Edit/Write is scanned for unowned fallbacks and runtime test doubles.
+witness hook is active. Every Edit/Write is scanned for violations.
 
-A fallback is an effect handler, not a convenience.
-A production substitute is an adapter, not a fake.
-
-When a guardrail fires, do not preserve the violating line.
-Repair at the owner layer and add one witness.
-
-Forbidden moves:
-- rename mock/stub/fake
-- syntax-equivalent fallback rewrites
-- adding a new inline default
-- inventing a new approval id
-- importing test support into the runtime graph
+- NEVER write `except: pass`, empty `catch {}`, or `.catch(() => null)`
+- NEVER use `mock`, `stub`, `fake` identifiers in production code
+- NEVER add silent defaults without spec approval
+- Unspecified fallbacks are bugs. If the spec doesn't say "default to X", don't default to X
 ```
 
-## Example: good repair versus escape
+---
 
-Bad escape:
-
-```python
-tool_use_id = tool_use["toolUseId"] if "toolUseId" in tool_use else "tool"
-```
-
-Owner-layer repair:
-
-```python
-from pydantic import BaseModel, ConfigDict, ValidationError
-
-class ToolUsePayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    toolUseId: str
-
-def parse_tool_use(raw: dict) -> ToolUsePayload:
-    try:
-        return ToolUsePayload.model_validate(raw)
-    except ValidationError as exc:
-        raise BadRequest("toolUseId is required") from exc
-
-payload = parse_tool_use(event.tool_use)
-tool_use_id = payload.toolUseId
-```
-
-## Development notes
-
-This repository keeps the hot path lean on purpose.
-
-- `ripgrep` handles candidate discovery.
-- `ast-grep` handles syntax-aware matching.
-- Rust glues those tools together, validates approvals against the registry, classifies findings, and persists pending reports.
-
-Heavy reasoning is intentionally pushed into skills and the repair subagent, not into synchronous hooks.
-
-## Release
+## Development
 
 ```bash
-scripts/release.sh 1.2.3
+cargo build --release
+cargo test --all-targets
+cargo fmt --check
+cargo clippy -- -D warnings
 ```
 
-This syncs `Cargo.toml`, `.claude-plugin/plugin.json`, and `marketplace.json`.
+## Releasing
+
+See [docs/releasing.md](docs/releasing.md).
 
 ## License
 

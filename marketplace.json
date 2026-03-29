@@ -1,5 +1,5 @@
 {
-  "name": "code-guardrails-marketplace",
+  "name": "witness-marketplace",
   "owner": {
     "name": "Wisteria30"
   },
@@ -8,14 +8,14 @@
   },
   "plugins": [
     {
-      "name": "code-guardrails",
+      "name": "witness",
       "source": "./",
       "description": "Detect unowned fallbacks and runtime test doubles, then route repairs to the owning layer with report-backed hooks, policies, skills, and a repair subagent.",
       "version": "1.0.0",
       "author": {
         "name": "Wisteria30"
       },
-      "repository": "https://github.com/Wisteria30/code-guardrails",
+      "repository": "https://github.com/Wisteria30/witness",
       "license": "MIT",
       "keywords": [
         "claude-code",

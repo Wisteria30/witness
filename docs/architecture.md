@@ -1,6 +1,6 @@
 # Architecture
 
-code-guardrails vNext is built around a simple separation:
+witness vNext is built around a simple separation:
 
 - **verifier**: fast, deterministic, cheap
 - **doctrine**: reusable, explicit, human-readable
@@ -24,8 +24,8 @@ It does **not** try to reason across the whole system in the hot path.
 The doctrine lives in:
 
 - `CLAUDE.md`
-- `skills/repair-guardrail/SKILL.md`
-- `skills/repair-guardrail/doctrine.md`
+- `skills/repair/SKILL.md`
+- `skills/repair/doctrine.md`
 
 Its job is to teach a stable repair protocol:
 

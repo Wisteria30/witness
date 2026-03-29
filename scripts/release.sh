@@ -10,7 +10,7 @@ VERSION="$1"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 if ! command -v jq >/dev/null 2>&1; then
-  echo "code-guardrails: jq is required for version sync" >&2
+  echo "witness: jq is required for version sync" >&2
   exit 1
 fi
 
@@ -26,4 +26,4 @@ mv "$ROOT/.claude-plugin/plugin.json.tmp" "$ROOT/.claude-plugin/plugin.json"
 jq --arg v "$VERSION" '.plugins[0].version = $v' "$ROOT/marketplace.json" > "$ROOT/marketplace.json.tmp"
 mv "$ROOT/marketplace.json.tmp" "$ROOT/marketplace.json"
 
-echo "code-guardrails: version synced to $VERSION"
+echo "witness: version synced to $VERSION"

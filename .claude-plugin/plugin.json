@@ -1,12 +1,12 @@
 {
-  "name": "code-guardrails",
+  "name": "witness",
   "version": "1.0.0",
   "description": "Repair-oriented guardrails for unowned fallbacks and runtime test doubles in Claude Code projects.",
   "author": {
     "name": "Wisteria30"
   },
-  "homepage": "https://github.com/Wisteria30/code-guardrails",
-  "repository": "https://github.com/Wisteria30/code-guardrails",
+  "homepage": "https://github.com/Wisteria30/witness",
+  "repository": "https://github.com/Wisteria30/witness",
   "license": "MIT",
   "keywords": [
     "claude-code",

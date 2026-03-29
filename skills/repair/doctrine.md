@@ -25,7 +25,28 @@ Heuristics:
 - concrete adapter selection belongs to **composition_root**
 - doubles belong to **tests**
 
+## Step 1.5 — challenge the optionality
+
+Before choosing a remedy, ask:
+
+- Is there a spec, schema, or contract that says this value can be absent?
+- Does any caller intentionally omit it?
+
+If the absent case has no specification: choose `eliminate_optionality`.
+
+If you cannot determine whether absence is intended: do NOT guess.
+Mark the violation as `needs_human_decision` in your output and move to the next violation.
+Record what you found and what the two most likely remedies would be.
+These will be presented to the user for decision after all decidable repairs are done.
+
 ## Step 2 — choose exactly one legal remedy
+
+### `eliminate_optionality`
+
+Use when the absent case has no specification.
+The field should be required, not optional. Remove the default,
+make the caller supply the value, or remove the field entirely.
+This is not a fallback remedy — it eliminates the need for fallback.
 
 ### `approved_policy_api`
 
@@ -51,7 +72,7 @@ Examples:
 
 ### `optional_exhaustive_handling`
 
-Use when the value is truly optional.
+Use when the value is truly optional and the spec says so.
 Do not totalize it prematurely. Keep the sum type visible and handle it explicitly.
 
 ### `typed_exception`
@@ -102,7 +123,7 @@ Never do these:
 tool_use_id = event.tool_use.get("toolUseId", "tool")
 ```
 
-### Good
+### Good — eliminate optionality (when absence has no spec)
 
 ```python
 class ToolUsePayload(BaseModel):
@@ -110,6 +131,13 @@ class ToolUsePayload(BaseModel):
 
 payload = ToolUsePayload.model_validate(event.tool_use)
 tool_use_id = payload.toolUseId
+```
+
+### Good — approved policy (when default is specified)
+
+```python
+# policy-approved: REQ-123 locale default is defined by spec
+lang = LocalePolicy.default_locale(payload.get("lang"))
 ```
 
 ### Bad

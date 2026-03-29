@@ -2,9 +2,15 @@
 set -euo pipefail
 
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.code-guardrails-data}"
+DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
 REPORT_DIR="$DATA_DIR/reports"
-ENGINE_BIN="$PLUGIN_DIR/bin/code-guardrails-engine"
+ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
+
+# Skip if running inside a git worktree (repair agent context)
+_GD="$(git rev-parse --git-dir 2>/dev/null || true)"
+if [ -n "$_GD" ] && [[ "$_GD" == *".git/worktrees/"* ]]; then
+  exit 0
+fi
 
 mkdir -p "$REPORT_DIR/pending" "$REPORT_DIR/history"
 
@@ -18,7 +24,7 @@ STATUS=$?
 set -e
 
 if [ "$STATUS" -eq 1 ]; then
-  printf '%s\n' "{\"systemMessage\":\"code-guardrails audit refreshed pending reports under $REPORT_DIR/pending\"}"
+  printf '%s\n' "{\"systemMessage\":\"witness audit refreshed pending reports under $REPORT_DIR/pending\"}"
 fi
 
 exit 0

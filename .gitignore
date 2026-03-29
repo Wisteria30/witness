@@ -1,6 +1,6 @@
 /target/
 /bin/
-/.code-guardrails-data/
+/.witness-data/
 /tmp/
 /reports/
 .DS_Store
