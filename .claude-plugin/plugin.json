@@ -1,6 +1,6 @@
 {
   "name": "witness",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Repair-oriented guardrails for unowned fallbacks and runtime test doubles in Claude Code projects.",
   "author": {
     "name": "Wisteria30"
