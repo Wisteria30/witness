@@ -16,7 +16,7 @@ jobs:
           HEAD_SHA="${{ github.sha }}"
           CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           echo "$CHANGED"
-          if ! echo "$CHANGED" | grep -Eq '^(src/|hooks/|rules/|skills/|agents/|policy/|commands/|tests/|fixtures/|\.claude-plugin/|Cargo\.toml|CLAUDE\.md|README\.md|setup|scripts/)'; then
+          if ! echo "$CHANGED" | grep -Eq '^(src/|hooks/|rules/|skills/|agents/|policy/|tests/|fixtures/|\.claude-plugin/|Cargo\.toml|CLAUDE\.md|README\.md|setup|scripts/|marketplace\.json)'; then
             exit 0
           fi
 

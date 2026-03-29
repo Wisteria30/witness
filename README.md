@@ -57,7 +57,6 @@ When a guardrail fires:
 code-guardrails/
 ├── .claude-plugin/
 ├── agents/
-├── commands/
 ├── docs/
 ├── fixtures/
 ├── hooks/
@@ -70,6 +69,7 @@ code-guardrails/
 ├── CHANGELOG.md
 ├── CLAUDE.md
 ├── Cargo.toml
+├── marketplace.json
 ├── README.md
 ├── setup
 └── sgconfig.yml
@@ -130,7 +130,8 @@ Prerequisites:
 - Claude Code
 - `ast-grep` 0.14+
 - `ripgrep` 14+
-- Rust 1.77+
+- Rust 1.85+
+- `jq` 1.6+ (hooks and release script)
 
 ```bash
 brew install ast-grep ripgrep
@@ -210,7 +211,7 @@ Heavy reasoning is intentionally pushed into skills and the repair subagent, not
 scripts/release.sh 1.2.3
 ```
 
-This syncs `Cargo.toml`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`.
+This syncs `Cargo.toml`, `.claude-plugin/plugin.json`, and `marketplace.json`.
 
 ## License
 

@@ -6,17 +6,10 @@ on:
   pull_request:
 
 jobs:
-  validate-metadata:
+  validate-scripts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install PyYAML
-        run: python -m pip install pyyaml
-      - name: Validate metadata
-        run: python scripts/check-metadata.py
       - name: Validate shell scripts
         run: bash -n hooks/*.sh setup scripts/*.sh
 

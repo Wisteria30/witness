@@ -1,7 +1,7 @@
 ---
 name: guardrail-repairer
 description: Use for unresolved guardrail reports that require owner-layer refactors, lawful defaults, typed errors, adapter rewiring, or contract-test additions. Never accept rename-only or syntax-equivalent escapes.
-model: sonnet
+model: opus
 effort: high
 maxTurns: 30
 skills:

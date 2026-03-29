@@ -39,7 +39,13 @@ fn run_scan_file(relative: &str) -> Output {
     let fixture = fixture_path(relative);
     let fixture_str = fixture.to_string_lossy().to_string();
     let config_str = repo_root().to_string_lossy().to_string();
-    run_engine(&["scan-file", "--file", &fixture_str, "--config-dir", &config_str])
+    run_engine(&[
+        "scan-file",
+        "--file",
+        &fixture_str,
+        "--config-dir",
+        &config_str,
+    ])
 }
 
 fn stdout_json(output: &Output) -> Value {
@@ -56,17 +62,29 @@ fn python_get_default_is_blocked() {
     assert!(!output.status.success());
     let value = stdout_json(&output);
     assert_eq!(violation_count(&value), 1);
-    assert_eq!(value["violations"][0]["rule_id"], "py-no-fallback-get-default");
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "py-no-fallback-get-default"
+    );
     assert_eq!(value["violations"][0]["owner_guess"], "boundary");
 }
 
 #[test]
 fn python_equivalent_rewrite_is_blocked() {
-    let output = run_scan_file("fixtures/python/fallback/should_fail/equivalent_membership_rewrite.py");
+    let output =
+        run_scan_file("fixtures/python/fallback/should_fail/equivalent_membership_rewrite.py");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["rule_id"], "py-no-fallback-conditional-membership-default");
-    assert!(value["capsule"].as_str().unwrap().contains("equivalent_rewrite"));
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "py-no-fallback-conditional-membership-default"
+    );
+    assert!(
+        value["capsule"]
+            .as_str()
+            .unwrap()
+            .contains("equivalent_rewrite")
+    );
 }
 
 #[test]
@@ -74,7 +92,10 @@ fn python_except_return_default_is_blocked() {
     let output = run_scan_file("fixtures/python/fallback/should_fail/except_return_default.py");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["rule_id"], "py-no-fallback-except-return-default");
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "py-no-fallback-except-return-default"
+    );
 }
 
 #[test]
@@ -98,15 +119,22 @@ fn python_runtime_double_is_blocked() {
     let output = run_scan_file("fixtures/python/test_double/should_fail/runtime_fake.py");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["violation_class"], "runtime_double_in_graph");
+    assert_eq!(
+        value["violations"][0]["violation_class"],
+        "runtime_double_in_graph"
+    );
 }
 
 #[test]
 fn python_test_support_import_is_blocked() {
-    let output = run_scan_file("fixtures/python/test_double/should_fail/runtime_test_support_import.py");
+    let output =
+        run_scan_file("fixtures/python/test_double/should_fail/runtime_test_support_import.py");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["rule_id"], "py-no-test-support-import");
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "py-no-test-support-import"
+    );
 }
 
 #[test]
@@ -114,7 +142,10 @@ fn python_adapter_choice_outside_composition_root_is_blocked() {
     let output = run_scan_file("fixtures/python/architecture/should_fail/adapter_choice.py");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["violation_class"], "adapter_choice_outside_composition_root");
+    assert_eq!(
+        value["violations"][0]["violation_class"],
+        "adapter_choice_outside_composition_root"
+    );
 }
 
 #[test]
@@ -130,7 +161,10 @@ fn typescript_equivalent_rewrite_is_blocked() {
     let output = run_scan_file("fixtures/typescript/fallback/should_fail/lookup_else_default.ts");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["rule_id"], "ts-no-fallback-lookup-else-default");
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "ts-no-fallback-lookup-else-default"
+    );
 }
 
 #[test]
@@ -138,7 +172,10 @@ fn typescript_promise_catch_default_is_blocked() {
     let output = run_scan_file("fixtures/typescript/fallback/should_fail/promise_catch_default.ts");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["rule_id"], "ts-no-promise-catch-default");
+    assert_eq!(
+        value["violations"][0]["rule_id"],
+        "ts-no-promise-catch-default"
+    );
 }
 
 #[test]
@@ -146,7 +183,10 @@ fn typescript_runtime_double_is_blocked() {
     let output = run_scan_file("fixtures/typescript/test_double/should_fail/runtime_fake.ts");
     assert!(!output.status.success());
     let value = stdout_json(&output);
-    assert_eq!(value["violations"][0]["violation_class"], "runtime_double_in_graph");
+    assert_eq!(
+        value["violations"][0]["violation_class"],
+        "runtime_double_in_graph"
+    );
 }
 
 #[test]
@@ -228,5 +268,10 @@ fn scan_stop_blocks_when_pending_reports_exist() {
     assert!(!stop.status.success());
     let value = stdout_json(&stop);
     assert_eq!(value["decision"], "block");
-    assert!(value["reason"].as_str().unwrap().contains("unresolved pending report"));
+    assert!(
+        value["reason"]
+            .as_str()
+            .unwrap()
+            .contains("unresolved pending report")
+    );
 }

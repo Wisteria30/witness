@@ -9,12 +9,7 @@ PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
 
 mkdir -p "$REPORT_DIR/pending" "$REPORT_DIR/history"
 
-EXPECTED_VERSION="$(python3 - <<'PY' "$PLUGIN_JSON"
-import json, sys
-with open(sys.argv[1], 'r', encoding='utf-8') as fh:
-    print(json.load(fh).get("version", ""))
-PY
-)"
+EXPECTED_VERSION="$(jq -r '.version // ""' "$PLUGIN_JSON" 2>/dev/null || echo "")"
 
 if [ -x "$ENGINE_BIN" ]; then
   CURRENT_VERSION="$("$ENGINE_BIN" --version 2>/dev/null || true)"

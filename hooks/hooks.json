@@ -7,7 +7,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
-            "timeout": 60
+            "timeout": 60,
+            "statusMessage": "Building code-guardrails engine..."
           }
         ]
       }
@@ -19,13 +20,15 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-classify.sh",
-            "timeout": 20
+            "timeout": 20,
+            "statusMessage": "Scanning for guardrail violations..."
           },
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-audit.sh",
             "async": true,
-            "timeout": 300
+            "timeout": 300,
+            "statusMessage": "Auditing project guardrails (background)..."
           }
         ]
       }
@@ -36,7 +39,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh",
-            "timeout": 30
+            "timeout": 30,
+            "statusMessage": "Checking unresolved guardrail reports..."
           }
         ]
       }
@@ -47,7 +51,8 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh",
-            "timeout": 30
+            "timeout": 30,
+            "statusMessage": "Checking unresolved guardrail reports..."
           }
         ]
       }

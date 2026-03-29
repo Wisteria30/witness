@@ -30,7 +30,6 @@
         ".claude-plugin/",
         ".github/",
         "agents/",
-        "commands/",
         "docs/",
         "fixtures/",
         "hooks/",
@@ -45,6 +44,7 @@
         "CLAUDE.md",
         "LICENSE",
         "README.md",
+        "marketplace.json",
         "setup",
         "sgconfig.yml"
       ]

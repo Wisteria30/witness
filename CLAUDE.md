@@ -23,7 +23,7 @@ cargo build --release
 cargo test --all-targets
 cargo fmt --check
 cargo clippy -- -D warnings
-python scripts/check-metadata.py
+cargo test --test metadata_validation
 
 ./bin/code-guardrails-engine scan-tree --root . --config-dir .
 ./bin/code-guardrails-engine scan-file --file path/to/file.py --config-dir .

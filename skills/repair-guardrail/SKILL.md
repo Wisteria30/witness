@@ -3,6 +3,7 @@ name: repair-guardrail
 description: Repair unresolved guardrail reports at the owner layer with one lawful remedy and one witness.
 context: fork
 disable-model-invocation: true
+allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 argument-hint: [report-path-or-file]
 ---
 

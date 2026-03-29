@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use glob::Pattern;
+use glob::{MatchOptions, Pattern};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -165,6 +165,7 @@ struct CommonOptions {
     test_globs: Vec<String>,
 }
 
+#[allow(clippy::enum_variant_names)]
 enum Mode {
     ScanFile { file: PathBuf },
     ScanTree { root: PathBuf },
@@ -332,6 +333,7 @@ struct DefaultsPolicyFile {
 }
 
 #[derive(Clone, Default, Deserialize)]
+#[allow(dead_code)]
 struct ApprovedDefault {
     #[serde(default)]
     symbol: String,
@@ -348,6 +350,7 @@ struct AdapterPolicyFile {
 }
 
 #[derive(Clone, Default, Deserialize)]
+#[allow(dead_code)]
 struct PortPolicy {
     #[serde(default)]
     allowed_runtime_adapters: Vec<String>,
@@ -364,9 +367,12 @@ struct PolicySet {
 
 impl PolicySet {
     fn load(config_dir: &Path) -> Result<Self, String> {
-        let ownership = read_yaml_file::<OwnershipPolicyFile>(&config_dir.join("policy/ownership.yml"))?;
-        let defaults = read_yaml_file::<DefaultsPolicyFile>(&config_dir.join("policy/defaults.yml"))?;
-        let adapters = read_yaml_file::<AdapterPolicyFile>(&config_dir.join("policy/adapters.yml"))?;
+        let ownership =
+            read_yaml_file::<OwnershipPolicyFile>(&config_dir.join("policy/ownership.yml"))?;
+        let defaults =
+            read_yaml_file::<DefaultsPolicyFile>(&config_dir.join("policy/defaults.yml"))?;
+        let adapters =
+            read_yaml_file::<AdapterPolicyFile>(&config_dir.join("policy/adapters.yml"))?;
         Ok(Self {
             ownership,
             defaults,
@@ -396,8 +402,7 @@ where
     }
     let text = fs::read_to_string(path)
         .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
-    serde_yaml::from_str(&text)
-        .map_err(|err| format!("failed to parse {}: {err}", path.display()))
+    serde_yml::from_str(&text).map_err(|err| format!("failed to parse {}: {err}", path.display()))
 }
 
 #[derive(Clone)]
@@ -434,7 +439,9 @@ impl RuleCatalog {
                 .map_err(|err| format!("failed to read {}: {err}", dir.display()))?;
             for entry in entries {
                 let path = entry
-                    .map_err(|err| format!("failed to read rule entry in {}: {err}", dir.display()))?
+                    .map_err(|err| {
+                        format!("failed to read rule entry in {}: {err}", dir.display())
+                    })?
                     .path();
                 if path.extension().and_then(|ext| ext.to_str()) != Some("yml") {
                     continue;
@@ -513,10 +520,8 @@ fn parse_rule_file(text: &str) -> Option<(String, HashMap<String, String>)> {
             continue;
         }
 
-        if in_metadata {
-            if let Some((key, value)) = trimmed.split_once(':') {
-                metadata.insert(key.trim().to_string(), strip_yaml_scalar(value));
-            }
+        if in_metadata && let Some((key, value)) = trimmed.split_once(':') {
+            metadata.insert(key.trim().to_string(), strip_yaml_scalar(value));
         }
     }
 
@@ -583,25 +588,13 @@ struct ScanBundle {
     findings: Vec<Finding>,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 struct ScanSummary {
     files_scanned: usize,
     violation_count: usize,
     classes: BTreeMap<String, usize>,
     owners: BTreeMap<String, usize>,
     by_file: BTreeMap<String, usize>,
-}
-
-impl Default for ScanSummary {
-    fn default() -> Self {
-        Self {
-            files_scanned: 0,
-            violation_count: 0,
-            classes: BTreeMap::new(),
-            owners: BTreeMap::new(),
-            by_file: BTreeMap::new(),
-        }
-    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -718,7 +711,7 @@ fn scan_file(
     let content = fs::read_to_string(&canonical_file)
         .map_err(|err| format!("failed to read {}: {err}", canonical_file.display()))?;
     let selected_ids = detect_rule_ids(&canonical_file, &content);
-    let mut findings = Vec::new();
+    let mut findings = supplemental_findings(&canonical_file, &content, policies, &scan_root);
 
     if !selected_ids.is_empty() {
         let rule_paths = catalog.rule_paths(selected_ids.iter().map(String::as_str));
@@ -727,17 +720,11 @@ fn scan_file(
             common,
             catalog,
             &scan_root,
-            &[canonical_file.clone()],
+            std::slice::from_ref(&canonical_file),
             &inline_rules,
         )?);
     }
 
-    findings.extend(supplemental_findings(
-        &canonical_file,
-        &content,
-        policies,
-        &scan_root,
-    ));
     dedupe_findings(&mut findings);
 
     Ok(ScanBundle {
@@ -772,12 +759,15 @@ fn scan_tree(
             .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
         let selected_ids = detect_rule_ids(&path, &content);
         if !selected_ids.is_empty() {
-            grouped_files.entry(selected_ids).or_default().push(path.clone());
+            grouped_files
+                .entry(selected_ids)
+                .or_default()
+                .push(path.clone());
         }
         supplemental.extend(supplemental_findings(&path, &content, policies, &scan_root));
     }
 
-    let mut findings = Vec::new();
+    let mut findings = supplemental;
     for (rule_ids, files) in grouped_files {
         let rule_paths = catalog.rule_paths(rule_ids.iter().map(String::as_str));
         let inline_rules = read_inline_rules(&rule_paths)?;
@@ -792,7 +782,6 @@ fn scan_tree(
         }
     }
 
-    findings.extend(supplemental);
     dedupe_findings(&mut findings);
 
     Ok(ScanBundle {
@@ -840,13 +829,23 @@ fn ripgrep_candidate_files(scan_root: &Path) -> Result<Vec<PathBuf>, String> {
 fn build_patterns(patterns: &[String]) -> Result<Vec<Pattern>, String> {
     patterns
         .iter()
-        .map(|pattern| Pattern::new(pattern).map_err(|err| format!("invalid glob {pattern}: {err}")))
+        .map(|pattern| {
+            Pattern::new(pattern).map_err(|err| format!("invalid glob {pattern}: {err}"))
+        })
         .collect()
 }
 
+const GLOB_OPTS: MatchOptions = MatchOptions {
+    require_literal_separator: true,
+    require_literal_leading_dot: false,
+    case_sensitive: true,
+};
+
 fn matches_test_globs(matcher: &[Pattern], path: &Path, scan_root: &Path) -> bool {
     let relative = path.strip_prefix(scan_root).unwrap_or(path);
-    matcher.iter().any(|pattern| pattern.matches_path(relative))
+    matcher
+        .iter()
+        .any(|pattern| pattern.matches_path_with(relative, GLOB_OPTS))
 }
 
 fn is_supported_source(path: &Path) -> bool {
@@ -919,7 +918,10 @@ fn detect_rule_ids(path: &Path, content: &str) -> Vec<String> {
             if lower.contains('?') && lower.contains(':') && lower.contains(" in ") {
                 ids.insert("ts-no-fallback-lookup-else-default".to_string());
             }
-            if lower.contains('?') && lower.contains(':') && contains_any(&lower, &["!== undefined", "!== null", "!= null"]) {
+            if lower.contains('?')
+                && lower.contains(':')
+                && contains_any(&lower, &["!== undefined", "!== null", "!= null"])
+            {
                 ids.insert("ts-no-fallback-ternary-default".to_string());
             }
             if lower.contains("catch") {
@@ -946,7 +948,7 @@ fn contains_any(content: &str, needles: &[&str]) -> bool {
 
 fn run_ast_grep(
     common: &CommonOptions,
-    _catalog: &RuleCatalog,
+    catalog: &RuleCatalog,
     scan_root: &Path,
     targets: &[PathBuf],
     inline_rules: &str,
@@ -1007,12 +1009,30 @@ fn check_exit_ok(output: &std::process::Output, fallback_msg: &str) -> Result<()
 fn read_inline_rules(rule_paths: &[PathBuf]) -> Result<String, String> {
     let mut parts = Vec::new();
     for rule_path in rule_paths {
-        parts.push(
-            fs::read_to_string(rule_path)
-                .map_err(|err| format!("failed to read {}: {err}", rule_path.display()))?,
-        );
+        let raw = fs::read_to_string(rule_path)
+            .map_err(|err| format!("failed to read {}: {err}", rule_path.display()))?;
+        parts.push(strip_files_ignores(&raw));
     }
     Ok(parts.join("\n---\n"))
+}
+
+fn strip_files_ignores(rule_text: &str) -> String {
+    let mut result = Vec::new();
+    let mut skip_block = false;
+    for line in rule_text.lines() {
+        if line.starts_with("files:") || line.starts_with("ignores:") {
+            skip_block = true;
+            continue;
+        }
+        if skip_block {
+            if line.starts_with("  - ") || line.starts_with("  '") || line.starts_with("  \"") {
+                continue;
+            }
+            skip_block = false;
+        }
+        result.push(line);
+    }
+    result.join("\n")
 }
 
 fn to_finding(
@@ -1067,7 +1087,8 @@ fn supplemental_findings(
         .unwrap_or_default();
 
     let mut findings = Vec::new();
-    let display_file = resolve_display_path(canonical_file, scan_root, &canonical_file.to_string_lossy());
+    let display_file =
+        resolve_display_path(canonical_file, scan_root, &canonical_file.to_string_lossy());
     let registered_adapters = policies.registered_adapters();
 
     for (line_index, line) in content.lines().enumerate() {
@@ -1079,7 +1100,8 @@ fn supplemental_findings(
                         canonical_file: canonical_file.to_path_buf(),
                         line0: line_index,
                         rule_id: "py-no-test-support-import".to_string(),
-                        message: "Runtime Python code must not import test support paths".to_string(),
+                        message: "Runtime Python code must not import test support paths"
+                            .to_string(),
                         text: line.to_string(),
                         metadata: HashMap::from([
                             ("policy_group".to_string(), "test-double".to_string()),
@@ -1137,7 +1159,8 @@ fn supplemental_findings(
                         canonical_file: canonical_file.to_path_buf(),
                         line0: line_index,
                         rule_id: "ts-no-test-support-import".to_string(),
-                        message: "Runtime TypeScript code must not import test support paths".to_string(),
+                        message: "Runtime TypeScript code must not import test support paths"
+                            .to_string(),
                         text: line.to_string(),
                         metadata: HashMap::from([
                             ("policy_group".to_string(), "test-double".to_string()),
@@ -1207,6 +1230,7 @@ fn dedupe_findings(findings: &mut Vec<Finding>) {
     });
 }
 
+#[allow(dead_code)]
 enum ApprovalState {
     Approved { id: String, reason: String },
     Invalid { id: Option<String>, reason: String },
@@ -1293,13 +1317,15 @@ fn evaluate_approval(
         return ApprovalState::Missing;
     }
 
-    let lines = line_cache.entry(finding.canonical_file.clone()).or_insert_with(|| {
-        fs::read_to_string(&finding.canonical_file)
-            .unwrap_or_default()
-            .lines()
-            .map(|line| line.to_string())
-            .collect()
-    });
+    let lines = line_cache
+        .entry(finding.canonical_file.clone())
+        .or_insert_with(|| {
+            fs::read_to_string(&finding.canonical_file)
+                .unwrap_or_default()
+                .lines()
+                .map(|line| line.to_string())
+                .collect()
+        });
 
     let candidates = [
         Some(finding.line0),
@@ -1308,37 +1334,37 @@ fn evaluate_approval(
     ];
 
     for index in candidates.into_iter().flatten() {
-        if let Some(line) = lines.get(index) {
-            if let Some(captures) = approval_id_regex().captures(line.trim()) {
-                let approval_id = captures
-                    .get(1)
-                    .map(|value| value.as_str().to_string())
-                    .unwrap_or_default();
-                if approval_id.is_empty() {
-                    continue;
-                }
+        if let Some(line) = lines.get(index)
+            && let Some(captures) = approval_id_regex().captures(line.trim())
+        {
+            let approval_id = captures
+                .get(1)
+                .map(|value| value.as_str().to_string())
+                .unwrap_or_default();
+            if approval_id.is_empty() {
+                continue;
+            }
 
-                let owner = guess_owner_layer(&finding.canonical_file, scan_root, policies);
-                if let Some(entry) = policies.registered_approval(&approval_id) {
-                    if entry.allowed_layers.is_empty() || entry.allowed_layers.contains(&owner) {
-                        return ApprovalState::Approved {
-                            id: approval_id,
-                            reason: entry.reason.clone(),
-                        };
-                    }
-                    return ApprovalState::Invalid {
-                        id: Some(approval_id),
-                        reason: format!(
-                            "approval id is registered but not allowed in owner layer `{owner}`"
-                        ),
+            let owner = guess_owner_layer(&finding.canonical_file, scan_root, policies);
+            if let Some(entry) = policies.registered_approval(&approval_id) {
+                if entry.allowed_layers.is_empty() || entry.allowed_layers.contains(&owner) {
+                    return ApprovalState::Approved {
+                        id: approval_id,
+                        reason: entry.reason.clone(),
                     };
                 }
-
                 return ApprovalState::Invalid {
                     id: Some(approval_id),
-                    reason: "approval id is not registered in policy/defaults.yml".to_string(),
+                    reason: format!(
+                        "approval id is registered but not allowed in owner layer `{owner}`"
+                    ),
                 };
             }
+
+            return ApprovalState::Invalid {
+                id: Some(approval_id),
+                reason: "approval id is not registered in policy/defaults.yml".to_string(),
+            };
         }
     }
 
@@ -1444,10 +1470,7 @@ fn violation_spec(class: &str) -> ViolationSpec {
         },
         "runtime_double_in_graph" => ViolationSpec {
             default_owner: "tests",
-            legal_remedies: &[
-                "move_double_to_tests",
-                "promote_to_first_class_adapter",
-            ],
+            legal_remedies: &["move_double_to_tests", "promote_to_first_class_adapter"],
             forbidden_moves: &["rename", "keep_test_support_in_runtime"],
         },
         "adapter_choice_outside_composition_root" => ViolationSpec {
@@ -1540,7 +1563,8 @@ fn persist_pending_reports(
         .map_err(|err| format!("failed to create {}: {err}", history_dir.display()))?;
 
     for file in scanned_files {
-        let pending_path = pending_dir.join(format!("{}.json", stable_key(&file.to_string_lossy())));
+        let pending_path =
+            pending_dir.join(format!("{}.json", stable_key(&file.to_string_lossy())));
         let _ = fs::remove_file(pending_path);
     }
 
@@ -1719,10 +1743,10 @@ fn guess_owner_layer(path: &Path, scan_root: &Path, policies: &PolicySet) -> Str
             continue;
         };
         for glob in globs {
-            if let Ok(pattern) = Pattern::new(glob) {
-                if pattern.matches_path(relative) {
-                    return (*layer).to_string();
-                }
+            if let Ok(pattern) = Pattern::new(glob)
+                && pattern.matches_path_with(relative, GLOB_OPTS)
+            {
+                return (*layer).to_string();
             }
         }
     }
@@ -1779,7 +1803,10 @@ fn extract_hook_context(input: &str) -> Result<HookContext, String> {
         .map(PathBuf::from)
         .unwrap_or_default();
 
-    Ok(HookContext { scan_root, file_path })
+    Ok(HookContext {
+        scan_root,
+        file_path,
+    })
 }
 
 #[cfg(test)]
@@ -1788,11 +1815,16 @@ mod tests {
 
     fn sample_policies() -> PolicySet {
         let mut ownership = OwnershipPolicyFile::default();
-        ownership.layers.insert("boundary".to_string(), vec!["src/api/**".to_string()]);
         ownership
             .layers
-            .insert("composition_root".to_string(), vec!["src/bootstrap.py".to_string()]);
-        ownership.layers.insert("tests".to_string(), vec!["tests/**".to_string()]);
+            .insert("boundary".to_string(), vec!["src/api/**".to_string()]);
+        ownership.layers.insert(
+            "composition_root".to_string(),
+            vec!["src/bootstrap.py".to_string()],
+        );
+        ownership
+            .layers
+            .insert("tests".to_string(), vec!["tests/**".to_string()]);
 
         let mut defaults = DefaultsPolicyFile::default();
         defaults.defaults.insert(
@@ -1809,7 +1841,9 @@ mod tests {
             "UserRepository".to_string(),
             PortPolicy {
                 allowed_runtime_adapters: vec!["SqlUserRepository".to_string()],
-                contract_tests: vec!["tests/contracts/test_user_repository_contract.py".to_string()],
+                contract_tests: vec![
+                    "tests/contracts/test_user_repository_contract.py".to_string(),
+                ],
             },
         );
 
@@ -1826,9 +1860,10 @@ mod tests {
             Path::new("sample.py"),
             "tool_use_id = tool_use[\"toolUseId\"] if \"toolUseId\" in tool_use else \"tool\"\n",
         );
-        assert!(ids
-            .iter()
-            .any(|id| id == "py-no-fallback-conditional-membership-default"));
+        assert!(
+            ids.iter()
+                .any(|id| id == "py-no-fallback-conditional-membership-default")
+        );
     }
 
     #[test]
