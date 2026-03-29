@@ -129,6 +129,9 @@ When a fallback/test-double violation fires, do not preserve the current line.
    - architecture/import rule
    - contract/property/stateful test
    - registered approval id
+   - explicit export manifest
+
+4. Challenge the interface — classify new symbols as public concepts (owner-layer nouns: Payload, Policy, Adapter, Error, etc.) or internal mechanics; add an export manifest witness (`__all__`, named exports)
 
 Forbidden moves:
 
@@ -137,6 +140,7 @@ Forbidden moves:
 - adding a new inline default
 - inventing a new approval id
 - importing test support into the runtime graph
+- hiding owner-layer concepts behind restricted visibility (revisit step 4)
 
 ## Design taste
 

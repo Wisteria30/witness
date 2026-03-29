@@ -1,0 +1,27 @@
+# Symbol-level interface surface rules.
+# Path-level ownership lives in ownership.yml.
+# This file governs which concept nouns are public by default.
+
+public_by_default:
+  # Owner-layer concept nouns — when a repair introduces one of these,
+  # it must be a public module export, not a restricted-visibility symbol.
+  concept_patterns:
+    - "*Payload"
+    - "*Policy"
+    - "*Adapter"
+    - "*Repository"
+    - "*Settings"
+    - "*Parser"
+    - "*Error"
+    - "*Exception"
+    - "*Mailer"
+    - "*EventStore"
+    - "*Service"
+
+export_manifest:
+  python:
+    - "__all__"
+    - "__init__.py re-export"
+  typescript:
+    - "named export"
+    - "barrel index re-export"

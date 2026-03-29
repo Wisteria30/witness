@@ -26,6 +26,8 @@ Operating rules:
 8. Never preserve the violating line.
 9. Never rename a mock/stub/fake to dodge detection.
 10. Never rewrite one fallback syntax into another fallback syntax.
+11. Challenge the interface (Step 4 in doctrine): classify every new top-level symbol as public concept or internal mechanic. Owner-layer nouns are public by default. If unclear, mark as `needs_human_decision`.
+12. After repairing each file, ensure the module's export manifest (`__all__`, named exports) reflects the public surface.
 
 When handling multiple reports:
 

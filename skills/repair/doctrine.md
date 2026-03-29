@@ -104,6 +104,37 @@ Choose at least one:
 - architecture/import rule
 - contract/property/stateful test
 - registered approval id
+- explicit export manifest (`__all__`, named exports, etc.)
+
+## Step 4 — challenge the interface
+
+Every new top-level symbol introduced by a repair must be classified:
+
+- **public concept** — an owner-layer noun (Payload, Policy, Adapter, Error, Repository, Settings, Parser). Public by default. No restricted visibility.
+- **subclass / extension API** — designed for downstream override. Public.
+- **internal mechanic** — a helper that serves exactly one public entry point. Prefer local scope or nesting over a top-level restricted-visibility symbol.
+
+Diagnostic: if the construct can be explained in one sentence as a metaphor
+(e.g. "ToolUsePayload is the passport control at the API boundary"),
+it is a public concept. If it cannot, it carries too much responsibility — split or move it.
+
+**Public concepts, private mechanics.**
+Owner-layer concepts are public. One-off computation steps are private.
+The problem is not "private exists" but "an owner-layer concept hiding behind restricted visibility"
+or "top-level restricted-visibility helpers proliferating without a clear public entry point."
+
+If publicity is unclear, return `needs_human_decision` with the symbol name,
+its one-sentence description, and the two most likely classifications.
+
+### Interface witness
+
+After repair, the module's explicit export manifest must reflect the decision:
+
+- Python: update `__all__` (or explicit `__init__.py` re-exports) to include every public symbol.
+- TypeScript: use named `export` for every public symbol.
+- Other languages: use the language's idiomatic export/visibility mechanism.
+
+If a module gains new public symbols and has no export manifest, create one.
 
 ## Forbidden moves
 
@@ -114,6 +145,8 @@ Never do these:
 - add a new implicit default
 - invent a new `policy-approved` id
 - import test support into runtime code
+- hide an owner-layer concept behind restricted visibility (interface uncertainty — revisit Step 4)
+- proliferate top-level restricted-visibility helpers without a clear public entry point
 
 ## Fast examples
 
@@ -138,6 +171,29 @@ tool_use_id = payload.toolUseId
 ```python
 # policy-approved: REQ-123 locale default is defined by spec
 lang = LocalePolicy.default_locale(payload.get("lang"))
+```
+
+### Bad — owner-layer concept hidden behind restricted visibility
+
+```python
+class _ToolUsePayload(BaseModel):
+    toolUseId: str
+
+def _parse_tool_use(raw: dict) -> _ToolUsePayload:
+    return _ToolUsePayload.model_validate(raw)
+```
+
+### Good — public concept with export manifest witness
+
+```python
+__all__ = ["ToolUsePayload", "parse_tool_use"]
+
+class ToolUsePayload(BaseModel):
+    """Passport control at the API boundary — validates a raw tool-use dict."""
+    toolUseId: str
+
+def parse_tool_use(raw: dict) -> ToolUsePayload:
+    return ToolUsePayload.model_validate(raw)
 ```
 
 ### Bad

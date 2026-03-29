@@ -18,6 +18,9 @@ fi
 sed -i.bak "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" "$ROOT/Cargo.toml"
 rm -f "$ROOT/Cargo.toml.bak"
 
+# Update Cargo.lock to match the new version
+cargo check --manifest-path "$ROOT/Cargo.toml" --quiet
+
 # plugin.json (jq)
 jq --arg v "$VERSION" '.version = $v' "$ROOT/.claude-plugin/plugin.json" > "$ROOT/.claude-plugin/plugin.json.tmp"
 mv "$ROOT/.claude-plugin/plugin.json.tmp" "$ROOT/.claude-plugin/plugin.json"

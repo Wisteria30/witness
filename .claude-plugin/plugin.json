@@ -15,5 +15,8 @@
     "ast-grep",
     "rust",
     "software-design"
-  ]
+  ],
+  "skills": "skills/",
+  "agents": "agents/",
+  "hooks": "hooks/"
 }

@@ -25,29 +25,7 @@
         "architecture",
         "software-quality"
       ],
-      "category": "code-quality",
-      "files": [
-        ".claude-plugin/",
-        ".github/",
-        "agents/",
-        "docs/",
-        "fixtures/",
-        "hooks/",
-        "policy/",
-        "rules/",
-        "scripts/",
-        "skills/",
-        "src/",
-        "tests/",
-        "Cargo.toml",
-        "CHANGELOG.md",
-        "CLAUDE.md",
-        "LICENSE",
-        "README.md",
-        "marketplace.json",
-        "setup",
-        "sgconfig.yml"
-      ]
+      "category": "code-quality"
     }
   ]
 }
