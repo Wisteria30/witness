@@ -1,15 +1,14 @@
 ---
 name: scan
-description: Run a full guardrail scan in a forked context, inspect pending reports, and summarize owner-layer remediation work.
+description: Report-only guardrail scan. Lists violations by owner layer and file. Never repairs — use /witness:repair separately for that.
 context: fork
-disable-model-invocation: true
 allowed-tools: Bash, Read, Grep, Glob
 argument-hint: [path]
 ---
 
 Run a full guardrail scan for `$ARGUMENTS` if provided, otherwise for the current project root.
 
-**This skill is REPORT ONLY. Do not fix, repair, or modify any code. Do not invoke repair. Just report and stop.**
+**REPORT ONLY. Do not fix, repair, or modify any code. Do not invoke repair. Do not suggest code changes. Just report and stop.**
 
 Workflow:
 
@@ -19,7 +18,7 @@ Workflow:
    - owner layer
    - violation class
    - file
-4. At the end, tell the user: "Run `/witness:repair` to batch-fix all pending reports in parallel."
-5. End your response here. **Do not take any further action. The user will decide when to repair.**
+4. Tell the user: "Run `/witness:repair` to batch-fix all pending reports in parallel."
+5. **Stop here. Do not continue. Do not repair. Do not call any other skill or agent. Your job is done.**
 
 Use [`../repair/doctrine.md`](../repair/doctrine.md) only for classification language, not for making changes.

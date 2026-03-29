@@ -1,7 +1,6 @@
 ---
 name: repair
 description: Batch repair all pending guardrail reports using 5 parallel worktree-isolated agents. Run /witness:scan first.
-disable-model-invocation: true
 allowed-tools: Bash, Read, Grep, Glob, Agent, AskUserQuestion
 argument-hint: [report-dir]
 ---
