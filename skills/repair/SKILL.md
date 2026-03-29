@@ -37,50 +37,14 @@ Launch exactly **5 Agent calls in a single message** (parallel tool calls). Each
 - **run_in_background**: `true`
 
 For each agent's prompt, include:
-1. The doctrine from `${CLAUDE_PLUGIN_ROOT}/skills/repair/doctrine.md` (read it once, embed in each prompt)
+1. Instruction to read the doctrine: `Read ${CLAUDE_PLUGIN_ROOT}/skills/repair/doctrine.md and follow it exactly.`
 2. The full JSON content of each assigned report
 3. The engine path for re-scan: `${CLAUDE_PLUGIN_ROOT}/bin/witness-engine`
 4. The config dir: `${CLAUDE_PLUGIN_ROOT}`
-5. Instructions:
-   - Follow the doctrine exactly, including Step 1.5 (challenge the optionality).
-   - If a violation's optionality cannot be determined, mark it `needs_human_decision` in your output with: the file, the line, what the code does, and the two most likely remedies.
-   - For decidable violations: repair, re-scan, delete report if clean.
-   - Never rename mock/stub/fake. Never rewrite one fallback into another.
+5. The policy dir: `${CLAUDE_PLUGIN_ROOT}/policy/` (for surfaces.yml reference)
 
-Example agent prompt structure:
-```
-You are repairing guardrail violations. Follow the doctrine below exactly.
-
-## Doctrine
-<contents of doctrine.md>
-
-## Engine
-Binary: <engine-path>
-Config: <config-dir>
-
-## Reports to repair (batch N of 5)
-### Report 1: <filename>
-<full JSON>
-
-### Report 2: <filename>
-<full JSON>
-
-## Instructions
-1. For each report, read the source file, identify the owner layer.
-2. Challenge the optionality (Step 1.5). If absence has no spec and you cannot tell, mark as needs_human_decision.
-3. For decidable violations: choose one legal remedy, add one witness.
-4. After fixing each file, verify: <engine-path> scan-file --file <file> --config-dir <config-dir>
-5. If scan returns clean (exit 0), delete the pending report JSON.
-6. Never rename mock/stub/fake. Never rewrite one fallback into another.
-
-## Output format
-Return a JSON summary:
-{
-  "repaired": [{"file": "...", "remedy": "...", "witness": "..."}],
-  "needs_human_decision": [{"file": "...", "line": N, "code": "...", "reason": "...", "candidates": ["remedy_a", "remedy_b"]}],
-  "failed": [{"file": "...", "reason": "..."}]
-}
-```
+The agent definition (`guardrail-repairer`) already contains operating rules.
+Do not duplicate doctrine or operating rules in the prompt.
 
 ### 4. Wait and cleanup
 

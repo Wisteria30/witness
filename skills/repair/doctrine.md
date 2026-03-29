@@ -97,14 +97,23 @@ Name it as a real adapter, wire it in the composition root, and add contract tes
 
 ## Step 3 — add one witness
 
-Choose at least one:
+Choose based on what the remedy introduced:
 
-- parser/schema validation
-- exhaustiveness check
-- architecture/import rule
-- contract/property/stateful test
-- registered approval id
+| Remedy | Preferred witness |
+|--------|-------------------|
+| `eliminate_optionality` | parser/schema validation (the required field itself is the proof) |
+| `approved_policy_api` | registered approval id (`policy-approved: REQ-xxx`) |
+| `boundary_parser` | parser/schema validation |
+| `optional_exhaustive_handling` | exhaustiveness check (match/switch covers all branches) |
+| `typed_exception` | contract/property/stateful test |
+| `resilience_adapter` | contract/property/stateful test + architecture/import rule |
+| `move_double_to_tests` | architecture/import rule (import guard prevents re-leak) |
+| `promote_to_first_class_adapter` | contract/property/stateful test + registered in `policy/adapters.yml` |
+
+When a repair introduces new public symbols, also add:
 - explicit export manifest (`__all__`, named exports, etc.)
+
+If multiple witnesses apply, choose the one closest to the code under repair.
 
 ## Step 4 — challenge the interface
 
@@ -194,6 +203,48 @@ class ToolUsePayload(BaseModel):
 
 def parse_tool_use(raw: dict) -> ToolUsePayload:
     return ToolUsePayload.model_validate(raw)
+```
+
+### Bad — TypeScript nullish fallback
+
+```ts
+const port = config.port ?? 3000
+```
+
+### Good — TypeScript boundary parser with export witness
+
+```ts
+import { z } from "zod"
+
+export const AppConfig = z.object({
+  port: z.number(),
+})
+
+export type AppConfig = z.infer<typeof AppConfig>
+
+export function parseConfig(raw: unknown): AppConfig {
+  return AppConfig.parse(raw)
+}
+```
+
+### Bad — TypeScript owner-layer concept hidden
+
+```ts
+const _parseToolUse = (raw: unknown) => ToolUseSchema.parse(raw)
+```
+
+### Good — TypeScript public concept with named export
+
+```ts
+export const ToolUsePayload = z.object({
+  toolUseId: z.string(),
+})
+
+export type ToolUsePayload = z.infer<typeof ToolUsePayload>
+
+export function parseToolUse(raw: unknown): ToolUsePayload {
+  return ToolUsePayload.parse(raw)
+}
 ```
 
 ### Bad

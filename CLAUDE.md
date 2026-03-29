@@ -67,7 +67,7 @@ Every rule must declare metadata for:
 
 ### Policies
 
-`policy/ownership.yml`, `policy/defaults.yml`, and `policy/adapters.yml` are the source of truth for layer ownership, approved defaults, and lawful runtime adapters.
+`policy/ownership.yml`, `policy/defaults.yml`, `policy/adapters.yml`, and `policy/surfaces.yml` are the source of truth for layer ownership, approved defaults, lawful runtime adapters, and symbol-level interface visibility.
 
 The approval model is **registry-backed**:
 
@@ -104,43 +104,17 @@ Never dump full scan output into `additionalContext`. The main session should on
 
 ## AI repair doctrine
 
-When a fallback/test-double violation fires, do not preserve the current line.
+The complete doctrine lives in [`skills/repair/doctrine.md`](skills/repair/doctrine.md).
 
-1. Find the owner layer:
-   - boundary
-   - domain
-   - application
-   - infrastructure
-   - composition root
-   - tests
+Quick reference:
 
-2. Choose exactly one legal remedy:
-   - approved policy API
-   - boundary parser / settings model
-   - Optional/union + exhaustive handling
-   - typed exception / contract violation
-   - explicit resilience adapter
-   - move double to tests
-   - promote substitute to a first-class adapter + contract tests
+1. Classify the owner layer
+2. Challenge the optionality — if unclear, `needs_human_decision`
+3. Choose exactly one legal remedy
+4. Add one witness
+5. Challenge the interface — public concepts, private mechanics
 
-3. Add one witness:
-   - parser/schema
-   - exhaustiveness check
-   - architecture/import rule
-   - contract/property/stateful test
-   - registered approval id
-   - explicit export manifest
-
-4. Challenge the interface — classify new symbols as public concepts (owner-layer nouns: Payload, Policy, Adapter, Error, etc.) or internal mechanics; add an export manifest witness (`__all__`, named exports)
-
-Forbidden moves:
-
-- rename mock/stub/fake
-- syntax-equivalent fallback rewrites
-- adding a new inline default
-- inventing a new approval id
-- importing test support into the runtime graph
-- hiding owner-layer concepts behind restricted visibility (revisit step 4)
+Forbidden moves: rename mock/stub/fake, syntax-equivalent rewrites, new inline defaults, invented approval ids, test support in runtime, hiding owner-layer concepts behind restricted visibility.
 
 ## Design taste
 

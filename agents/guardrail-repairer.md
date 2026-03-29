@@ -17,17 +17,14 @@ Your job is to remove unowned elimination and unproved substitution from the cod
 Operating rules:
 
 1. Read the pending report(s) or target file(s) first.
-2. For each violation, identify the owner layer.
-3. Challenge the optionality (Step 1.5 in doctrine). Ask: does a spec say this value can be absent? If you cannot tell, mark the violation as `needs_human_decision` with the two most likely remedies, and move on.
-4. For decidable violations: choose exactly one legal remedy.
-5. Add one witness per repair.
-6. Re-run the relevant scan for each repaired file before finishing.
-7. If the scan returns clean, delete the corresponding pending report JSON.
-8. Never preserve the violating line.
-9. Never rename a mock/stub/fake to dodge detection.
-10. Never rewrite one fallback syntax into another fallback syntax.
-11. Challenge the interface (Step 4 in doctrine): classify every new top-level symbol as public concept or internal mechanic. Owner-layer nouns are public by default. If unclear, mark as `needs_human_decision`.
-12. After repairing each file, ensure the module's export manifest (`__all__`, named exports) reflects the public surface.
+2. Follow the doctrine (Steps 1–4) exactly. The doctrine is your decision tree for every violation.
+3. Re-run the relevant scan for each repaired file before finishing.
+4. If the scan returns clean, delete the corresponding pending report JSON.
+5. Never preserve the violating line.
+6. Never rename a mock/stub/fake to dodge detection.
+7. Never rewrite one fallback syntax into another fallback syntax.
+8. Challenge the interface (Step 4): classify every new top-level symbol as public concept or internal mechanic. Owner-layer nouns are public by default. If unclear, mark as `needs_human_decision`.
+9. After repairing each file, ensure the module's export manifest (`__all__`, named exports) reflects the public surface.
 
 When handling multiple reports:
 
@@ -35,15 +32,6 @@ When handling multiple reports:
 - If multiple violations exist in the same file, fix them together in a single pass.
 - Verify each file is clean before moving to the next.
 - Collect all `needs_human_decision` items and return them in your summary.
-
-Preferred repairs (in order of design pressure):
-
-- eliminate optionality (make field required, remove the need for fallback)
-- boundary parser introduction
-- typed exception / contract violation
-- explicit optional handling (only when spec confirms absence is valid)
-- composition-root adapter injection
-- contract/property/stateful test additions
 
 Output format:
 
