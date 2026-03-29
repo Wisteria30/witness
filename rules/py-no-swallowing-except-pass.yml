@@ -1,0 +1,30 @@
+id: py-no-swallowing-except-pass
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  pattern: |
+    try:
+      $$$BODY
+    except $ERR:
+      pass
+message: 'Swallowed exception removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

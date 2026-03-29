@@ -1,0 +1,34 @@
+name: version-lint
+
+on:
+  pull_request:
+
+jobs:
+  version-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require version bump when shipped files change
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "$CHANGED"
+          if ! echo "$CHANGED" | grep -Eq '^(src/|hooks/|rules/|skills/|agents/|policy/|commands/|tests/|fixtures/|\.claude-plugin/|Cargo\.toml|CLAUDE\.md|README\.md|setup|scripts/)'; then
+            exit 0
+          fi
+
+          OLD_VERSION="$(git show "$BASE_SHA":Cargo.toml | sed -n 's/^version = "\([^"]*\)"$/\1/p' | head -1)"
+          NEW_VERSION="$(sed -n 's/^version = "\([^"]*\)"$/\1/p' Cargo.toml | head -1)"
+
+          if [ -z "$OLD_VERSION" ] || [ -z "$NEW_VERSION" ]; then
+            echo "::error::Could not determine versions"
+            exit 1
+          fi
+
+          if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+            echo "::error::Cargo.toml version must be bumped when shipped files change"
+            exit 1
+          fi

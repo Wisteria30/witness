@@ -1,0 +1,28 @@
+id: py-no-fallback-os-getenv-default
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: os.getenv($KEY, $DEFAULT)
+    - pattern: os.environ.get($KEY, $DEFAULT)
+message: 'Environment defaults belong in a settings model, not inline runtime code'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: boundary_parse_missing
+  owner_hint: boundary
+  approval_mode: registry_policy_comment

@@ -1,0 +1,27 @@
+id: py-no-test-double-identifier
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  kind: identifier
+  regex: '(?i)(mock|stub|fake)'
+message: 'Runtime Python code must not contain mock/stub/fake identifiers'
+note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
+metadata:
+  policy_group: test-double
+  violation_class: runtime_double_in_graph
+  owner_hint: tests
+  approval_mode: none

@@ -1,0 +1,42 @@
+layers:
+  boundary:
+    - "src/api/**"
+    - "fixtures/python/fallback/**"
+    - "fixtures/typescript/fallback/**"
+    - "src/http/**"
+    - "src/events/inbound/**"
+    - "src/settings/**"
+    - "app/api/**"
+    - "app/settings/**"
+  domain:
+    - "src/domain/**"
+    - "app/domain/**"
+  application:
+    - "src/usecases/**"
+    - "fixtures/python/architecture/**"
+    - "fixtures/typescript/architecture/**"
+    - "fixtures/python/test_double/**"
+    - "fixtures/typescript/test_double/**"
+    - "src/application/**"
+    - "app/usecases/**"
+  infrastructure:
+    - "src/infra/**"
+    - "src/infrastructure/**"
+    - "app/infra/**"
+  composition_root:
+    - "src/main.py"
+    - "src/bootstrap.py"
+    - "src/main.ts"
+    - "src/bootstrap.ts"
+    - "src/composition/**"
+    - "app/main.py"
+    - "app/bootstrap.py"
+  tests:
+    - "tests/**"
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/*_test.py"
+    - "**/test_*.py"
+    - "**/*.test.ts"
+    - "**/*.spec.ts"
+    - "**/__tests__/**"

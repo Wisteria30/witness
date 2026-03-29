@@ -1,0 +1,19 @@
+{
+  "name": "code-guardrails",
+  "version": "1.0.0",
+  "description": "Repair-oriented guardrails for unowned fallbacks and runtime test doubles in Claude Code projects.",
+  "author": {
+    "name": "Wisteria30"
+  },
+  "homepage": "https://github.com/Wisteria30/code-guardrails",
+  "repository": "https://github.com/Wisteria30/code-guardrails",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "guardrails",
+    "static-analysis",
+    "ast-grep",
+    "rust",
+    "software-design"
+  ]
+}

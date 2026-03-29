@@ -1,0 +1,35 @@
+id: py-no-fallback-except-return-default
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+  any:
+    - pattern: |
+        try:
+          $$$BODY
+        except $ERR:
+          return $DEFAULT
+    - pattern: |
+        try:
+          $$$BODY
+        except $ERR as $NAME:
+          return $DEFAULT
+message: 'Returning a default from except removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

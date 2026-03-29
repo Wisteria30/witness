@@ -1,0 +1,28 @@
+id: py-no-test-double-unittest-mock
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: from unittest.mock import $$$SYMS
+    - pattern: import unittest.mock
+message: 'Runtime Python code must not import unittest.mock'
+note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
+metadata:
+  policy_group: test-double
+  violation_class: runtime_double_in_graph
+  owner_hint: tests
+  approval_mode: none

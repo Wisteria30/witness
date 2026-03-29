@@ -1,0 +1,2 @@
+TypeScript rules intentionally target `.ts`, `.cts`, and `.mts`.
+Add a separate TSX rule set only after measuring hot-path impact and false-positive rate.

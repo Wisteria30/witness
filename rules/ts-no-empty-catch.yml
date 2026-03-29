@@ -1,0 +1,38 @@
+id: ts-no-empty-catch
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: |
+        try {
+          $$$BODY
+        } catch ($ERR) {
+        }
+    - pattern: |
+        try {
+          $$$BODY
+        } catch {
+        }
+message: 'Empty catch removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

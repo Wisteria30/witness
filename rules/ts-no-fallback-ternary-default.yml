@@ -1,0 +1,31 @@
+id: ts-no-fallback-ternary-default
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: "$VALUE != null ? $VALUE : $DEFAULT"
+    - pattern: "$VALUE !== undefined ? $VALUE : $DEFAULT"
+    - pattern: "$VALUE !== null ? $VALUE : $DEFAULT"
+message: 'Null/undefined ternary rewrite is still an inline fallback'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_default
+  owner_hint: boundary
+  approval_mode: registry_policy_comment

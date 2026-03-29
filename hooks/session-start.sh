@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.code-guardrails-data}"
+REPORT_DIR="$DATA_DIR/reports"
+ENGINE_BIN="$PLUGIN_DIR/bin/code-guardrails-engine"
+PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
+
+mkdir -p "$REPORT_DIR/pending" "$REPORT_DIR/history"
+
+EXPECTED_VERSION="$(python3 - <<'PY' "$PLUGIN_JSON"
+import json, sys
+with open(sys.argv[1], 'r', encoding='utf-8') as fh:
+    print(json.load(fh).get("version", ""))
+PY
+)"
+
+if [ -x "$ENGINE_BIN" ]; then
+  CURRENT_VERSION="$("$ENGINE_BIN" --version 2>/dev/null || true)"
+  if [ "$CURRENT_VERSION" = "$EXPECTED_VERSION" ]; then
+    exit 0
+  fi
+  rm -f "$ENGINE_BIN"
+fi
+
+bash "$PLUGIN_DIR/setup" >/dev/null 2>&1 || {
+  echo "code-guardrails: engine setup failed (guardrails running fail-open until setup succeeds)" >&2
+  exit 0
+}

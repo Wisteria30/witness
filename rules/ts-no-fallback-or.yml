@@ -1,0 +1,34 @@
+id: ts-no-fallback-or
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+  any:
+    - pattern: const $NAME = $VALUE || $DEFAULT
+    - pattern: let $NAME = $VALUE || $DEFAULT
+    - pattern: var $NAME = $VALUE || $DEFAULT
+    - pattern: $NAME = $VALUE || $DEFAULT
+    - pattern: return $VALUE || $DEFAULT
+    - pattern: $OBJ.$PROP = $VALUE || $DEFAULT
+    - pattern: $OBJ[$KEY] = $VALUE || $DEFAULT
+message: 'Truthy fallback owns policy at the wrong layer'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_default
+  owner_hint: boundary
+  approval_mode: registry_policy_comment

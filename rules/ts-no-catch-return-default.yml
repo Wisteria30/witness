@@ -1,0 +1,40 @@
+id: ts-no-catch-return-default
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: |
+        try {
+          $$$BODY
+        } catch ($ERR) {
+          return $DEFAULT
+        }
+    - pattern: |
+        try {
+          $$$BODY
+        } catch {
+          return $DEFAULT
+        }
+message: 'Returning a default from catch removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

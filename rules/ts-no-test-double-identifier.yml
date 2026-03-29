@@ -1,0 +1,29 @@
+id: ts-no-test-double-identifier
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  kind: identifier
+  regex: '(?i)(mock|stub|fake)'
+message: 'Runtime TypeScript code must not contain mock/stub/fake identifiers'
+note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
+metadata:
+  policy_group: test-double
+  violation_class: runtime_double_in_graph
+  owner_hint: tests
+  approval_mode: none

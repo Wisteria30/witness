@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
+BIN_DIR="$PLUGIN_DIR/bin"
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "code-guardrails: cargo is required to build the Rust engine" >&2
+  exit 1
+fi
+
+mkdir -p "$BIN_DIR"
+
+cargo build --release --manifest-path "$PLUGIN_DIR/Cargo.toml" --bin code-guardrails-engine
+cp "$PLUGIN_DIR/target/release/code-guardrails-engine" "$BIN_DIR/code-guardrails-engine"
+chmod +x "$BIN_DIR/code-guardrails-engine"
+chmod +x "$PLUGIN_DIR"/hooks/*.sh
+chmod +x "$PLUGIN_DIR"/scripts/*.sh 2>/dev/null || true
+
+echo "code-guardrails: engine installed at $BIN_DIR/code-guardrails-engine"

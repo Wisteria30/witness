@@ -1,0 +1,8 @@
+/target/
+/bin/
+/.code-guardrails-data/
+/tmp/
+/reports/
+.DS_Store
+*.swp
+*.tmp

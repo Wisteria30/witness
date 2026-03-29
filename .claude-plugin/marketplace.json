@@ -1,0 +1,53 @@
+{
+  "name": "code-guardrails-marketplace",
+  "owner": {
+    "name": "Wisteria30"
+  },
+  "metadata": {
+    "description": "Repair-first guardrails for AI-generated production code."
+  },
+  "plugins": [
+    {
+      "name": "code-guardrails",
+      "source": "./",
+      "description": "Detect unowned fallbacks and runtime test doubles, then route repairs to the owning layer with report-backed hooks, policies, skills, and a repair subagent.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Wisteria30"
+      },
+      "repository": "https://github.com/Wisteria30/code-guardrails",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "guardrails",
+        "ast-grep",
+        "rust",
+        "architecture",
+        "software-quality"
+      ],
+      "category": "code-quality",
+      "files": [
+        ".claude-plugin/",
+        ".github/",
+        "agents/",
+        "commands/",
+        "docs/",
+        "fixtures/",
+        "hooks/",
+        "policy/",
+        "rules/",
+        "scripts/",
+        "skills/",
+        "src/",
+        "tests/",
+        "Cargo.toml",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "LICENSE",
+        "README.md",
+        "setup",
+        "sgconfig.yml"
+      ]
+    }
+  ]
+}

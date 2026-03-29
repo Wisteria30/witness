@@ -1,0 +1,26 @@
+id: py-no-fallback-conditional-none-default
+language: Python
+severity: error
+files:
+  - '**/*.py'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.py'
+  - '**/test_*.py'
+  - '**/conftest.py'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  pattern: $VALUE if $VALUE is not None else $DEFAULT
+message: 'Conditional `None` rewrite is still an inline fallback'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional/union handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_default
+  owner_hint: boundary
+  approval_mode: registry_policy_comment

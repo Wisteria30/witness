@@ -1,0 +1,34 @@
+id: ts-no-test-double-import
+language: TypeScript
+severity: error
+files:
+  - '**/*.ts'
+  - '**/*.cts'
+  - '**/*.mts'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+
+  any:
+    - pattern: import $SYM from "sinon"
+    - pattern: import $SYM from 'sinon'
+    - pattern: import { $$$SYMS } from "ts-auto-mock"
+    - pattern: import { $$$SYMS } from 'ts-auto-mock'
+    - pattern: import { $$$SYMS } from "jest-mock"
+    - pattern: import { $$$SYMS } from 'jest-mock'
+message: 'Runtime TypeScript code must not import test-double tooling'
+note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
+metadata:
+  policy_group: test-double
+  violation_class: runtime_double_in_graph
+  owner_hint: tests
+  approval_mode: none
