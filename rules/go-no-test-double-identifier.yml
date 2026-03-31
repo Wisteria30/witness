@@ -17,8 +17,11 @@ ignores:
   - '**/*.gen.go'
   - '**/zz_generated*.go'
 rule:
-  kind: identifier
-  regex: '(?i)(mock|stub|fake)'
+  any:
+    - kind: identifier
+      regex: '(?i)(mock|stub|fake)'
+    - kind: type_identifier
+      regex: '(?i)(mock|stub|fake)'
 message: 'Runtime Go code must not contain mock/stub/fake identifiers'
 note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
 metadata:

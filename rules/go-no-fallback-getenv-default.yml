@@ -17,13 +17,11 @@ ignores:
   - '**/*.gen.go'
   - '**/zz_generated*.go'
 rule:
-  any:
-    - pattern: |
-        $VALUE := os.Getenv($KEY)
-        if $VALUE == "" {
-          $VALUE = $DEFAULT
-        }
-    - pattern: if $VALUE == "" { $VALUE = $DEFAULT }
+  kind: if_statement
+  regex: 'os\.Getenv\('
+  has:
+    kind: binary_expression
+    regex: '==\s*""'
 message: 'Environment fallback owns policy at the wrong layer'
 note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional handling, a typed exception, or an explicit resilience adapter.'
 metadata:

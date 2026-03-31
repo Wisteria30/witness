@@ -20,7 +20,7 @@ jobs:
       - name: Validate JSON files
         run: |
           jq empty .claude-plugin/plugin.json
-          jq empty marketplace.json
+          jq empty .claude-plugin/marketplace.json
           jq empty hooks/hooks.json
       - name: Check executables
         run: |

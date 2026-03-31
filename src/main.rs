@@ -1727,9 +1727,24 @@ fn read_inline_rules(rule_paths: &[PathBuf]) -> Result<String, String> {
     for rule_path in rule_paths {
         let raw = fs::read_to_string(rule_path)
             .map_err(|err| format!("failed to read {}: {err}", rule_path.display()))?;
-        parts.push(strip_ast_grep_filters(&raw));
+        let stripped = strip_ast_grep_filters(&raw);
+        if let Some(tsx_variant) = make_tsx_variant(&stripped) {
+            parts.push(stripped);
+            parts.push(tsx_variant);
+        } else {
+            parts.push(stripped);
+        }
     }
     Ok(parts.join("\n---\n"))
+}
+
+fn make_tsx_variant(rule_text: &str) -> Option<String> {
+    static TS_LANG: OnceLock<Regex> = OnceLock::new();
+    let re = TS_LANG.get_or_init(|| Regex::new(r"(?m)^language:\s*TypeScript\s*$").unwrap());
+    if !re.is_match(rule_text) {
+        return None;
+    }
+    Some(re.replace(rule_text, "language: Tsx").to_string())
 }
 
 fn strip_ast_grep_filters(rule_text: &str) -> String {

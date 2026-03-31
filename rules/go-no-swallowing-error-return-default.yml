@@ -17,12 +17,7 @@ ignores:
   - '**/*.gen.go'
   - '**/zz_generated*.go'
 rule:
-  any:
-    - pattern: |
-        if err != nil {
-          return $DEFAULT
-        }
-    - pattern: if err != nil { return $DEFAULT }
+  pattern: "if err != nil { return $DEFAULT }"
 message: 'Returning a default from an error branch removes failure without a lawful owner or witness'
 note: 'Repair at the owner layer. Prefer a typed error, explicit optional handling, or a resilience adapter.'
 metadata:

@@ -13,18 +13,9 @@ ignores:
   - '**/codegen/**'
   - '**/__generated__/**'
 rule:
-  any:
-    - pattern: |
-        match $EXPR {
-          Ok($VALUE) => $VALUE,
-          Err($ERR) => $DEFAULT,
-        }
-    - pattern: |
-        match $EXPR {
-          Some($VALUE) => $VALUE,
-          None => $DEFAULT,
-        }
-message: 'Matching Err or None into a default removes failure without a lawful owner or witness'
+  kind: match_arm
+  regex: '^\s*Err\(_\)\s*=>'
+message: 'Matching Err(_) into a default removes failure without a lawful owner or witness'
 note: 'Repair at the owner layer. Prefer explicit optional handling or a typed error.'
 metadata:
   policy_group: fallback

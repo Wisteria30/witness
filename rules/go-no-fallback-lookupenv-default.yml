@@ -17,13 +17,11 @@ ignores:
   - '**/*.gen.go'
   - '**/zz_generated*.go'
 rule:
-  any:
-    - pattern: |
-        $VALUE, $OK := os.LookupEnv($KEY)
-        if !$OK {
-          $VALUE = $DEFAULT
-        }
-    - pattern: if !$OK { $VALUE = $DEFAULT }
+  kind: if_statement
+  regex: 'os\.LookupEnv\('
+  has:
+    kind: unary_expression
+    regex: '^!'
 message: 'LookupEnv fallback owns policy at the wrong layer'
 note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional handling, a typed exception, or an explicit resilience adapter.'
 metadata:

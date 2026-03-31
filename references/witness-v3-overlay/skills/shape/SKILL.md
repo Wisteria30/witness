@@ -2,6 +2,7 @@
 name: shape
 description: Read-only structural diagnosis. Extract principal semantic roles, detect context blur, and propose constitution deltas. Never edits code.
 context: fork
+agent: Explore
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash
 argument-hint: [path-or-module]
