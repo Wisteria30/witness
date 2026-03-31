@@ -31,6 +31,7 @@ const DEFAULT_SKIP_GLOBS: &[&str] = &[
     "**/codegen/**",
     "**/__generated__/**",
 ];
+const DEFAULT_TREE_SKIP_GLOBS: &[&str] = &["**/fixtures/**"];
 const REPORT_VERSION: u8 = 3;
 const OWNER_PRECEDENCE: &[&str] = &[
     "tests",
@@ -62,16 +63,19 @@ fn main() {
 fn run(args: Vec<String>) -> Result<i32, String> {
     let cli = Cli::parse(args)?;
     let catalog = RuleCatalog::load(&cli.common.config_dir)?;
-    let policies = PolicySet::load(&cli.common.config_dir)?;
     let charters = CharterSet::load(cli.common.charter_dir.as_deref())?;
 
     match cli.mode {
         Mode::ScanFile { file } => {
+            let scan_root =
+                env::current_dir().map_err(|err| format!("failed to read cwd: {err}"))?;
+            let policies = PolicySet::load(&cli.common.config_dir, Some(&scan_root))?;
             let bundle = scan_file(&cli.common, &catalog, &policies, &file, None)?;
             let result = finalize_scan("scan-file", &cli.common, &policies, &charters, bundle)?;
             emit_scan_result(&cli.common, &result)
         }
         Mode::ScanTree { root } => {
+            let policies = PolicySet::load(&cli.common.config_dir, Some(&root))?;
             let bundle = scan_tree(&cli.common, &catalog, &policies, &root)?;
             let result = finalize_scan("scan-tree", &cli.common, &policies, &charters, bundle)?;
             emit_scan_result(&cli.common, &result)
@@ -89,6 +93,7 @@ fn run(args: Vec<String>) -> Result<i32, String> {
                 }
                 return Ok(0);
             }
+            let policies = PolicySet::load(&cli.common.config_dir, Some(&hook_ctx.scan_root))?;
             let bundle = scan_file(
                 &cli.common,
                 &catalog,
@@ -412,14 +417,46 @@ struct PolicySet {
 }
 
 impl PolicySet {
-    fn load(config_dir: &Path) -> Result<Self, String> {
+    fn load(config_dir: &Path, overlay_root: Option<&Path>) -> Result<Self, String> {
+        let default_policy_dir = config_dir.join("policy");
+        let overlay_policy_dir = overlay_root.map(|root| root.join("policy"));
         Ok(Self {
-            ownership: read_yaml_file(&config_dir.join("policy/ownership.yml"))?,
-            defaults: read_yaml_file(&config_dir.join("policy/defaults.yml"))?,
-            adapters: read_yaml_file(&config_dir.join("policy/adapters.yml"))?,
-            surfaces: read_yaml_file(&config_dir.join("policy/surfaces.yml"))?,
-            contracts: read_yaml_file(&config_dir.join("policy/contracts.yml"))?,
-            contexts: read_yaml_file(&config_dir.join("policy/contexts.yml"))?,
+            ownership: read_yaml_with_override(
+                &default_policy_dir.join("ownership.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("ownership.yml")),
+            )?,
+            defaults: read_yaml_with_override(
+                &default_policy_dir.join("defaults.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("defaults.yml")),
+            )?,
+            adapters: read_yaml_with_override(
+                &default_policy_dir.join("adapters.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("adapters.yml")),
+            )?,
+            surfaces: read_yaml_with_override(
+                &default_policy_dir.join("surfaces.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("surfaces.yml")),
+            )?,
+            contracts: read_yaml_with_override(
+                &default_policy_dir.join("contracts.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("contracts.yml")),
+            )?,
+            contexts: read_yaml_with_override(
+                &default_policy_dir.join("contexts.yml"),
+                overlay_policy_dir
+                    .as_ref()
+                    .map(|dir| dir.join("contexts.yml")),
+            )?,
         })
     }
 
@@ -450,6 +487,21 @@ where
     let text = fs::read_to_string(path)
         .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
     serde_yml::from_str(&text).map_err(|err| format!("failed to parse {}: {err}", path.display()))
+}
+
+fn read_yaml_with_override<T>(
+    default_path: &Path,
+    override_path: Option<PathBuf>,
+) -> Result<T, String>
+where
+    T: Default + for<'de> Deserialize<'de>,
+{
+    if let Some(path) = override_path
+        && path.exists()
+    {
+        return read_yaml_file(&path);
+    }
+    read_yaml_file(default_path)
 }
 
 #[derive(Default, Deserialize, Clone)]
@@ -1076,7 +1128,7 @@ fn scan_tree(
     let scan_root = root
         .canonicalize()
         .map_err(|err| format!("failed to resolve {}: {err}", root.display()))?;
-    let skip_matcher = build_skip_matcher(&common.test_globs)?;
+    let skip_matcher = build_tree_skip_matcher(&common.test_globs)?;
     let mut grouped_files: HashMap<Vec<String>, Vec<PathBuf>> = HashMap::new();
     let mut scanned_files = Vec::new();
     let mut contents = HashMap::new();
@@ -2875,6 +2927,17 @@ fn build_patterns(patterns: &[String]) -> Result<Vec<Pattern>, String> {
 fn build_skip_matcher(test_globs: &[String]) -> Result<Vec<Pattern>, String> {
     let mut all = test_globs.to_vec();
     all.extend(DEFAULT_SKIP_GLOBS.iter().map(|value| (*value).to_string()));
+    build_patterns(&all)
+}
+
+fn build_tree_skip_matcher(test_globs: &[String]) -> Result<Vec<Pattern>, String> {
+    let mut all = test_globs.to_vec();
+    all.extend(DEFAULT_SKIP_GLOBS.iter().map(|value| (*value).to_string()));
+    all.extend(
+        DEFAULT_TREE_SKIP_GLOBS
+            .iter()
+            .map(|value| (*value).to_string()),
+    );
     build_patterns(&all)
 }
 

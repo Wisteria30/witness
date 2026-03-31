@@ -368,6 +368,61 @@ fn hidden_owner_concept_is_violation() {
 }
 
 #[test]
+fn bundled_policy_is_used_when_repo_has_no_policy_dir() {
+    let root = unique_temp_dir("bundled-policy");
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class _ToolUsePayload:\n    pass\n",
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = repo_root().to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(summary_count(&value, "violations"), 1);
+    assert_eq!(
+        finding_by_rule(&value, "py-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+}
+
+#[test]
+fn repo_policy_file_overrides_bundled_default() {
+    let root = unique_temp_dir("policy-override");
+    write_file(
+        &root,
+        "policy/surfaces.yml",
+        r#"
+rules:
+  forbid_restricted_visibility_for_public_concepts: false
+  require_explicit_export_manifest_for_new_public_symbols: false
+"#,
+    );
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class _ToolUsePayload:\n    pass\n",
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = repo_root().to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(output.status.success());
+    let value = stdout_json(&output);
+    assert!(value["findings"].as_array().unwrap().is_empty());
+}
+
+#[test]
 fn scan_tree_catches_structural_v3_findings() {
     let root = unique_temp_dir("scan-tree-structure");
     write_minimal_project(&root);

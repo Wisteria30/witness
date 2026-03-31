@@ -1,6 +1,14 @@
 # Policy files
 
-The verifier intentionally knows very little by itself. In v3 it relies on a repo constitution made of six policy files.
+The verifier intentionally knows very little by itself. In v3 it relies on six policy files.
+
+You do not have to create all six files in your repo before using `witness`.
+The plugin ships with bundled default policy files. Repo-local files are optional overrides:
+
+- if `policy/ownership.yml` exists in your repo, it overrides the bundled `ownership.yml`
+- if `policy/ownership.yml` does not exist in your repo, the bundled file is used
+
+This lets teams start with the plugin's default QA scope and add project-specific policy only when they are ready.
 
 ## `policy/ownership.yml`
 
