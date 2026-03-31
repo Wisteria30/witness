@@ -19,12 +19,14 @@
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(*.py)|Edit(*.ts)|Edit(*.tsx)|Edit(*.cts)|Edit(*.mts)|Edit(*.go)|Edit(*.rs)|Write(*.py)|Write(*.ts)|Write(*.tsx)|Write(*.cts)|Write(*.mts)|Write(*.go)|Write(*.rs)",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-classify.sh",
             "timeout": 20,
             "statusMessage": "Scanning for witness violations..."
           },
           {
             "type": "command",
+            "if": "Edit(*.py)|Edit(*.ts)|Edit(*.tsx)|Edit(*.cts)|Edit(*.mts)|Edit(*.go)|Edit(*.rs)|Write(*.py)|Write(*.ts)|Write(*.tsx)|Write(*.cts)|Write(*.mts)|Write(*.go)|Write(*.rs)",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-audit.sh",
             "async": true,
             "timeout": 300,

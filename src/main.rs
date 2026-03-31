@@ -122,7 +122,7 @@ fn run(args: Vec<String>) -> Result<i32, String> {
             Ok(if result.clean { 0 } else { 1 })
         }
         Mode::RetireCharters { change_ids } => {
-            let result = retire_charters(&cli.common, &change_ids)?;
+            let result = retire_charters(&cli.common, &charters, &change_ids)?;
             print_json(&result)?;
             Ok(if result.clean { 0 } else { 1 })
         }
@@ -148,6 +148,14 @@ struct CommonOptions {
     charter_dir: Option<PathBuf>,
     hook_response: bool,
     test_globs: Vec<String>,
+}
+
+impl CommonOptions {
+    fn effective_report_dir(&self) -> PathBuf {
+        self.report_dir
+            .clone()
+            .unwrap_or_else(|| self.config_dir.join(".witness-data/reports"))
+    }
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -220,21 +228,11 @@ impl Cli {
                         Some(PathBuf::from(next_value(&mut iter, "--charter-dir")?))
                 }
                 "--test-globs" => {
-                    common.test_globs = next_value(&mut iter, "--test-globs")?
-                        .split(',')
-                        .filter(|part| !part.trim().is_empty())
-                        .map(|part| part.trim().to_string())
-                        .collect();
+                    common.test_globs = split_csv(&next_value(&mut iter, "--test-globs")?);
                 }
                 "--hook-response" => common.hook_response = true,
                 "--change-id" => {
-                    retire_change_ids.extend(
-                        next_value(&mut iter, "--change-id")?
-                            .split(',')
-                            .map(str::trim)
-                            .filter(|value| !value.is_empty())
-                            .map(ToString::to_string),
-                    );
+                    retire_change_ids.extend(split_csv(&next_value(&mut iter, "--change-id")?));
                 }
                 "--changed-only" => {
                     changed_only = Some(PathBuf::from(next_value(&mut iter, "--changed-only")?));
@@ -1222,15 +1220,16 @@ fn scan_tree(
         let content = fs::read_to_string(&path)
             .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
         scanned_files.push(path.clone());
-        contents.insert(path.clone(), content.clone());
-        let selected_ids = detect_rule_ids(&path, &content);
+        contents.insert(path.clone(), content);
+        let content = contents.get(&path).unwrap();
+        let selected_ids = detect_rule_ids(&path, content);
         if !selected_ids.is_empty() {
             grouped_files
                 .entry(selected_ids)
                 .or_default()
                 .push(path.clone());
         }
-        supplemental.extend(supplemental_findings(&path, &content, policies, &scan_root));
+        supplemental.extend(supplemental_findings(&path, content, policies, &scan_root));
     }
 
     let mut findings = supplemental;
@@ -2099,13 +2098,17 @@ fn finalize_scan(
 ) -> Result<ScanResult, String> {
     let mut line_cache: HashMap<PathBuf, Vec<String>> = HashMap::new();
     let mut findings = Vec::new();
+    let rust_masks: HashMap<&PathBuf, Vec<bool>> = bundle
+        .contents
+        .iter()
+        .filter(|(path, _)| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
+        .map(|(path, content)| (path, rust_test_only_line_mask(content)))
+        .collect();
 
     for raw in &bundle.findings {
         if raw.canonical_file.extension().and_then(|ext| ext.to_str()) == Some("rs")
-            && bundle
-                .contents
+            && rust_masks
                 .get(&raw.canonical_file)
-                .map(|content| rust_test_only_line_mask(content))
                 .and_then(|mask| mask.get(raw.line0).copied())
                 .unwrap_or(false)
         {
@@ -2534,7 +2537,7 @@ fn analyze_structure(
                 });
             }
 
-            if should_check_contexts(&display_file, policies, &charter_assignment) {
+            if should_check_contexts(&path_contexts, &charter_assignment) {
                 let vocab_matches = vocabulary_contexts(&symbol.name, policies);
                 if path_context.is_none()
                     && charter_assignment.is_none()
@@ -3171,12 +3174,8 @@ fn tokenize_symbol(symbol: &str) -> BTreeSet<String> {
         .collect()
 }
 
-fn should_check_contexts(
-    file_key: &str,
-    policies: &PolicySet,
-    charter_assignment: &Option<String>,
-) -> bool {
-    charter_assignment.is_some() || !matched_contexts(file_key, policies).is_empty()
+fn should_check_contexts(path_contexts: &[String], charter_assignment: &Option<String>) -> bool {
+    charter_assignment.is_some() || !path_contexts.is_empty()
 }
 
 fn has_boundary_signal(content: &str, symbols: &[SymbolRecord]) -> bool {
@@ -3362,10 +3361,7 @@ fn persist_pending_reports(
 }
 
 fn scan_stop(common: &CommonOptions) -> Result<StopScanResult, String> {
-    let report_dir = common
-        .report_dir
-        .clone()
-        .unwrap_or_else(|| common.config_dir.join(".witness-data/reports"));
+    let report_dir = common.effective_report_dir();
     let pending_dir = report_dir.join("pending");
     if !pending_dir.is_dir() {
         return Ok(StopScanResult {
@@ -3434,7 +3430,7 @@ fn load_pending_reports(pending_dir: &Path) -> Result<Vec<PendingReport>, String
     Ok(reports)
 }
 
-fn split_charter_refs(raw: &str) -> Vec<String> {
+fn split_csv(raw: &str) -> Vec<String> {
     raw.split(',')
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -3446,7 +3442,7 @@ fn pending_report_references_change_id(report: &PendingReport, change_id: &str) 
     report
         .charter_ref
         .as_deref()
-        .map(split_charter_refs)
+        .map(split_csv)
         .unwrap_or_default()
         .iter()
         .any(|value| value == change_id)
@@ -3458,6 +3454,7 @@ fn charter_history_dir(charter_dir: &Path) -> PathBuf {
 
 fn retire_charters(
     common: &CommonOptions,
+    charters: &CharterSet,
     requested_change_ids: &[String],
 ) -> Result<CharterRetirementResult, String> {
     let charter_dir = common
@@ -3465,10 +3462,7 @@ fn retire_charters(
         .clone()
         .ok_or("retire-charters requires --charter-dir".to_string())?;
     let history_dir = charter_history_dir(&charter_dir);
-    let report_dir = common
-        .report_dir
-        .clone()
-        .unwrap_or_else(|| common.config_dir.join(".witness-data/reports"));
+    let report_dir = common.effective_report_dir();
     let pending_dir = report_dir.join("pending");
     let pending_reports = if pending_dir.is_dir() {
         load_pending_reports(&pending_dir)?
@@ -3497,7 +3491,6 @@ fn retire_charters(
     fs::create_dir_all(&history_dir)
         .map_err(|err| format!("failed to create {}: {err}", history_dir.display()))?;
 
-    let charters = CharterSet::load(Some(&charter_dir))?;
     let mut archived = Vec::new();
     let mut skipped = Vec::new();
     let mut seen = BTreeSet::new();
@@ -3549,14 +3542,6 @@ fn retire_charters(
         }
 
         let charter = matches[0];
-        if charter.charter.change_id.trim().is_empty() {
-            skipped.push(CharterRetirementSkip {
-                change_id: change_id.clone(),
-                reason: "active charter is missing change_id".to_string(),
-            });
-            continue;
-        }
-
         let archive_name = format!("{}--{}.yml", timestamp_rfc3339(), change_id);
         let archive_path = history_dir.join(archive_name);
         let contents = fs::read_to_string(&charter.path)
