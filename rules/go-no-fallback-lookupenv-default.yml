@@ -1,0 +1,33 @@
+id: go-no-fallback-lookupenv-default
+language: Go
+severity: error
+files:
+  - '**/*.go'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.go'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+  - '**/*.pb.go'
+  - '**/*.gen.go'
+  - '**/zz_generated*.go'
+rule:
+  any:
+    - pattern: |
+        $VALUE, $OK := os.LookupEnv($KEY)
+        if !$OK {
+          $VALUE = $DEFAULT
+        }
+    - pattern: if !$OK { $VALUE = $DEFAULT }
+message: 'LookupEnv fallback owns policy at the wrong layer'
+note: 'Repair at the owner layer. Use an approved policy API, a boundary parser/settings model, optional handling, a typed exception, or an explicit resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_default
+  owner_hint: boundary
+  approval_mode: none

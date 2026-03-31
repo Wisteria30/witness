@@ -1,0 +1,23 @@
+id: rs-no-fallback-unwrap-or
+language: Rust
+severity: error
+files:
+  - '**/*.rs'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+  pattern: $EXPR.unwrap_or($DEFAULT)
+message: 'Inline fallback via unwrap_or owns policy at the wrong layer'
+note: 'Repair at the owner layer. Use explicit optional handling, a typed error, or a boundary parser.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_default
+  owner_hint: boundary
+  approval_mode: none

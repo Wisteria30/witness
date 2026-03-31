@@ -18,9 +18,12 @@ const DEFAULT_TEST_GLOBS: &[&str] = &[
     "**/test/**",
     "**/tests/**",
     "**/*_test.py",
+    "**/*_test.go",
     "**/test_*.py",
     "**/*.test.ts",
+    "**/*.test.tsx",
     "**/*.spec.ts",
+    "**/*.spec.tsx",
     "**/__tests__/**",
     "**/conftest.py",
 ];
@@ -30,6 +33,9 @@ const DEFAULT_SKIP_GLOBS: &[&str] = &[
     "**/swagger/**",
     "**/codegen/**",
     "**/__generated__/**",
+    "**/*.pb.go",
+    "**/*.gen.go",
+    "**/zz_generated*.go",
 ];
 const DEFAULT_TREE_SKIP_GLOBS: &[&str] = &["**/fixtures/**"];
 const REPORT_VERSION: u8 = 3;
@@ -1050,6 +1056,26 @@ fn ts_symbol_regex() -> &'static Regex {
     })
 }
 
+fn go_symbol_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?m)^(type|func|const|var)\s+([A-Za-z_][A-Za-z0-9_]*)").unwrap())
+}
+
+fn rust_symbol_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(
+            r"(?m)^(pub(?:\([^)]*\))?\s+)?(?:(?:async|unsafe)\s+)*(struct|enum|trait|type|fn)\s+([A-Za-z_][A-Za-z0-9_]*)",
+        )
+        .unwrap()
+    })
+}
+
+fn rust_pub_use_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?m)^pub\s+use\s+([^;]+);").unwrap())
+}
+
 const GLOB_OPTS: MatchOptions = MatchOptions {
     require_literal_separator: true,
     require_literal_leading_dot: false,
@@ -1225,7 +1251,7 @@ fn detect_rule_ids(path: &Path, content: &str) -> Vec<String> {
                 ids.insert("py-no-test-double-unittest-mock".to_string());
             }
         }
-        "ts" | "cts" | "mts" => {
+        "ts" | "tsx" | "cts" | "mts" => {
             if lower.contains("??=") {
                 ids.insert("ts-no-fallback-nullish-assign".to_string());
             }
@@ -1259,6 +1285,49 @@ fn detect_rule_ids(path: &Path, content: &str) -> Vec<String> {
                 ids.insert("ts-no-test-double-import".to_string());
             }
         }
+        "go" => {
+            if lower.contains("getenv(") {
+                ids.insert("go-no-fallback-getenv-default".to_string());
+            }
+            if lower.contains("lookupenv(") {
+                ids.insert("go-no-fallback-lookupenv-default".to_string());
+            }
+            if lower.contains("if err != nil") && lower.contains("return") {
+                ids.insert("go-no-swallowing-error-return-default".to_string());
+            }
+            if lower.contains("if err != nil") {
+                ids.insert("go-no-swallowing-error-empty-branch".to_string());
+            }
+            if contains_any(&lower, &["mock", "stub", "fake"]) {
+                ids.insert("go-no-test-double-identifier".to_string());
+            }
+            if contains_any(&lower, &["testify/mock", "gomock"]) {
+                ids.insert("go-no-test-double-import".to_string());
+            }
+        }
+        "rs" => {
+            if lower.contains(".unwrap_or(") {
+                ids.insert("rs-no-fallback-unwrap-or".to_string());
+            }
+            if lower.contains(".unwrap_or_default(") || lower.contains(".unwrap_or_default()") {
+                ids.insert("rs-no-fallback-unwrap-or-default".to_string());
+            }
+            if lower.contains(".map_or(") {
+                ids.insert("rs-no-fallback-map-or".to_string());
+            }
+            if lower.contains("match ") && (lower.contains("err(") || lower.contains("none")) {
+                ids.insert("rs-no-swallowing-error-match-default".to_string());
+            }
+            if lower.contains("if let err") || lower.contains("if let none") {
+                ids.insert("rs-no-swallowing-error-if-let".to_string());
+            }
+            if contains_any(&lower, &["mock", "stub", "fake"]) {
+                ids.insert("rs-no-test-double-identifier".to_string());
+            }
+            if contains_any(&lower, &["mockall", "faux", "mockito"]) {
+                ids.insert("rs-no-test-double-import".to_string());
+            }
+        }
         _ => {}
     }
 
@@ -1272,7 +1341,8 @@ fn contains_any(content: &str, needles: &[&str]) -> bool {
 fn ripgrep_source_files(scan_root: &Path) -> Result<Vec<PathBuf>, String> {
     let output = Command::new("rg")
         .args([
-            "--files", "-g", "*.py", "-g", "*.ts", "-g", "*.cts", "-g", "*.mts", ".",
+            "--files", "-g", "*.py", "-g", "*.ts", "-g", "*.tsx", "-g", "*.cts", "-g", "*.mts",
+            "-g", "*.go", "-g", "*.rs", ".",
         ])
         .current_dir(scan_root)
         .output()
@@ -1410,7 +1480,7 @@ fn supported_rule_ids(extension: &str) -> &'static [&'static str] {
             "py-no-test-double-identifier",
             "py-no-test-double-unittest-mock",
         ],
-        "ts" | "cts" | "mts" => &[
+        "ts" | "tsx" | "cts" | "mts" => &[
             "ts-no-fallback-nullish-assign",
             "ts-no-fallback-or-assign",
             "ts-no-fallback-nullish",
@@ -1422,6 +1492,23 @@ fn supported_rule_ids(extension: &str) -> &'static [&'static str] {
             "ts-no-promise-catch-default",
             "ts-no-test-double-identifier",
             "ts-no-test-double-import",
+        ],
+        "go" => &[
+            "go-no-fallback-getenv-default",
+            "go-no-fallback-lookupenv-default",
+            "go-no-swallowing-error-return-default",
+            "go-no-swallowing-error-empty-branch",
+            "go-no-test-double-identifier",
+            "go-no-test-double-import",
+        ],
+        "rs" => &[
+            "rs-no-fallback-unwrap-or",
+            "rs-no-fallback-unwrap-or-default",
+            "rs-no-fallback-map-or",
+            "rs-no-swallowing-error-match-default",
+            "rs-no-swallowing-error-if-let",
+            "rs-no-test-double-identifier",
+            "rs-no-test-double-import",
         ],
         _ => &[],
     }
@@ -1480,6 +1567,38 @@ fn internal_rule_matches(rule_id: &str, line: &str, previous_line: &str) -> bool
             &line.to_ascii_lowercase(),
             &["sinon", "ts-auto-mock", "jest-mock"],
         ),
+        "go-no-fallback-getenv-default" => {
+            line.contains("Getenv(") && contains_any(line, &["== \"\"", "= \"", ":= \""])
+        }
+        "go-no-fallback-lookupenv-default" => {
+            line.contains("LookupEnv(") && contains_any(line, &["!ok", "== false", "= \"", ":= \""])
+        }
+        "go-no-swallowing-error-return-default" => {
+            line.contains("if err != nil") && line.contains("return")
+        }
+        "go-no-swallowing-error-empty-branch" => line.contains("if err != nil {}"),
+        "go-no-test-double-identifier" => {
+            contains_any(&line.to_ascii_lowercase(), &["mock", "stub", "fake"])
+        }
+        "go-no-test-double-import" => {
+            contains_any(&line.to_ascii_lowercase(), &["testify/mock", "gomock"])
+        }
+        "rs-no-fallback-unwrap-or" => line.contains(".unwrap_or("),
+        "rs-no-fallback-unwrap-or-default" => line.contains(".unwrap_or_default"),
+        "rs-no-fallback-map-or" => line.contains(".map_or("),
+        "rs-no-swallowing-error-match-default" => {
+            line.contains("match ")
+                && contains_any(&line.to_ascii_lowercase(), &["err(", "none", "=>"])
+        }
+        "rs-no-swallowing-error-if-let" => {
+            contains_any(&line.to_ascii_lowercase(), &["if let err", "if let none"])
+        }
+        "rs-no-test-double-identifier" => {
+            contains_any(&line.to_ascii_lowercase(), &["mock", "stub", "fake"])
+        }
+        "rs-no-test-double-import" => {
+            contains_any(&line.to_ascii_lowercase(), &["mockall", "faux", "mockito"])
+        }
         _ => false,
     }
 }
@@ -1529,6 +1648,31 @@ fn internal_rule_message(rule_id: &str) -> &'static str {
             "Runtime TypeScript code must not use test-double identifiers"
         }
         "ts-no-test-double-import" => "Runtime TypeScript code must not import test-double tooling",
+        "go-no-fallback-getenv-default" => "Environment fallback owns policy at the wrong layer",
+        "go-no-fallback-lookupenv-default" => "LookupEnv fallback owns policy at the wrong layer",
+        "go-no-swallowing-error-return-default" => {
+            "Returning a default from an error branch removes failure without a lawful owner or witness"
+        }
+        "go-no-swallowing-error-empty-branch" => {
+            "Empty error branch removes failure without a lawful owner or witness"
+        }
+        "go-no-test-double-identifier" => "Runtime Go code must not use test-double identifiers",
+        "go-no-test-double-import" => "Runtime Go code must not import test-double tooling",
+        "rs-no-fallback-unwrap-or" => {
+            "Inline fallback via unwrap_or owns policy at the wrong layer"
+        }
+        "rs-no-fallback-unwrap-or-default" => {
+            "Inline fallback via unwrap_or_default owns policy at the wrong layer"
+        }
+        "rs-no-fallback-map-or" => "Inline fallback via map_or owns policy at the wrong layer",
+        "rs-no-swallowing-error-match-default" => {
+            "Matching Err or None into a default removes failure without a lawful owner or witness"
+        }
+        "rs-no-swallowing-error-if-let" => {
+            "if let Err/None default handling removes failure without a lawful owner or witness"
+        }
+        "rs-no-test-double-identifier" => "Runtime Rust code must not use test-double identifiers",
+        "rs-no-test-double-import" => "Runtime Rust code must not import test-double tooling",
         _ => "Witness rule violation",
     }
 }
@@ -1622,8 +1766,21 @@ fn supplemental_findings(
     let display_file =
         resolve_display_path(canonical_file, scan_root, &canonical_file.to_string_lossy());
     let registered_adapters = policies.registered_adapters();
+    let rust_test_mask = if extension == "rs" {
+        Some(rust_test_only_line_mask(content))
+    } else {
+        None
+    };
 
     for (line_index, line) in content.lines().enumerate() {
+        if rust_test_mask
+            .as_ref()
+            .and_then(|mask| mask.get(line_index))
+            .copied()
+            .unwrap_or(false)
+        {
+            continue;
+        }
         match extension {
             "py" => {
                 if py_test_support_import_regex().is_match(line) {
@@ -1677,7 +1834,7 @@ fn supplemental_findings(
                     }
                 }
             }
-            "ts" | "cts" | "mts" => {
+            "ts" | "tsx" | "cts" | "mts" => {
                 if ts_test_support_import_regex().is_match(line) {
                     findings.push(RawFinding {
                         display_file: display_file.clone(),
@@ -1727,6 +1884,122 @@ fn supplemental_findings(
                     }
                 }
             }
+            "go" => {
+                let lower = line.to_ascii_lowercase();
+                if contains_any(
+                    &lower,
+                    &[
+                        "github.com/stretchr/testify/mock",
+                        "go.uber.org/mock/gomock",
+                    ],
+                ) {
+                    findings.push(RawFinding {
+                        display_file: display_file.clone(),
+                        canonical_file: canonical_file.to_path_buf(),
+                        line0: line_index,
+                        rule_id: "go-no-test-support-import".to_string(),
+                        message: "Runtime Go code must not import test support paths".to_string(),
+                        text: line.to_string(),
+                        metadata: HashMap::from([
+                            ("policy_group".to_string(), "test-double".to_string()),
+                            (
+                                "violation_class".to_string(),
+                                "runtime_double_in_graph".to_string(),
+                            ),
+                            ("owner_hint".to_string(), "tests".to_string()),
+                            ("approval_mode".to_string(), APPROVAL_MODE_NONE.to_string()),
+                        ]),
+                    });
+                }
+
+                if owner != "composition_root" && owner != "tests" {
+                    let trimmed = line.trim_start();
+                    for adapter in &registered_adapters {
+                        let ctor = format!("New{adapter}(");
+                        let literal = format!("{adapter}{{");
+                        if trimmed.contains(&ctor) || trimmed.contains(&literal) {
+                            findings.push(RawFinding {
+                                display_file: display_file.clone(),
+                                canonical_file: canonical_file.to_path_buf(),
+                                line0: line_index,
+                                rule_id: "go-no-adapter-choice-outside-composition-root".to_string(),
+                                message: format!(
+                                    "Concrete adapter `{adapter}` is selected outside the composition root"
+                                ),
+                                text: line.to_string(),
+                                metadata: HashMap::from([
+                                    ("policy_group".to_string(), "architecture".to_string()),
+                                    (
+                                        "violation_class".to_string(),
+                                        "adapter_choice_outside_composition_root".to_string(),
+                                    ),
+                                    ("owner_hint".to_string(), "composition_root".to_string()),
+                                    ("approval_mode".to_string(), APPROVAL_MODE_NONE.to_string()),
+                                ]),
+                            });
+                        }
+                    }
+                }
+            }
+            "rs" => {
+                let lower = line.to_ascii_lowercase();
+                if contains_any(
+                    &lower,
+                    &[
+                        "use mockall",
+                        "extern crate mockall",
+                        "use faux",
+                        "use mockito",
+                    ],
+                ) {
+                    findings.push(RawFinding {
+                        display_file: display_file.clone(),
+                        canonical_file: canonical_file.to_path_buf(),
+                        line0: line_index,
+                        rule_id: "rs-no-test-support-import".to_string(),
+                        message: "Runtime Rust code must not import test support paths".to_string(),
+                        text: line.to_string(),
+                        metadata: HashMap::from([
+                            ("policy_group".to_string(), "test-double".to_string()),
+                            (
+                                "violation_class".to_string(),
+                                "runtime_double_in_graph".to_string(),
+                            ),
+                            ("owner_hint".to_string(), "tests".to_string()),
+                            ("approval_mode".to_string(), APPROVAL_MODE_NONE.to_string()),
+                        ]),
+                    });
+                }
+
+                if owner != "composition_root" && owner != "tests" {
+                    let trimmed = line.trim_start();
+                    for adapter in &registered_adapters {
+                        let ctor = format!("{adapter}::new(");
+                        let literal = format!("{adapter} {{");
+                        if trimmed.contains(&ctor) || trimmed.contains(&literal) {
+                            findings.push(RawFinding {
+                                display_file: display_file.clone(),
+                                canonical_file: canonical_file.to_path_buf(),
+                                line0: line_index,
+                                rule_id: "rs-no-adapter-choice-outside-composition-root".to_string(),
+                                message: format!(
+                                    "Concrete adapter `{adapter}` is selected outside the composition root"
+                                ),
+                                text: line.to_string(),
+                                metadata: HashMap::from([
+                                    ("policy_group".to_string(), "architecture".to_string()),
+                                    (
+                                        "violation_class".to_string(),
+                                        "adapter_choice_outside_composition_root".to_string(),
+                                    ),
+                                    ("owner_hint".to_string(), "composition_root".to_string()),
+                                    ("approval_mode".to_string(), APPROVAL_MODE_NONE.to_string()),
+                                ]),
+                            });
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -1758,6 +2031,16 @@ fn finalize_scan(
     let mut findings = Vec::new();
 
     for raw in &bundle.findings {
+        if raw.canonical_file.extension().and_then(|ext| ext.to_str()) == Some("rs")
+            && bundle
+                .contents
+                .get(&raw.canonical_file)
+                .map(|content| rust_test_only_line_mask(content))
+                .and_then(|mask| mask.get(raw.line0).copied())
+                .unwrap_or(false)
+        {
+            continue;
+        }
         match evaluate_approval(raw, policies, &bundle.scan_root, &mut line_cache) {
             ApprovalState::Approved => {}
             ApprovalState::AllowedWithoutApproval => {
@@ -2123,6 +2406,8 @@ fn analyze_structure(
                     line: Some(symbol.line),
                     rule_id: Some(match extension {
                         "py" => "py-no-hidden-owner-concept".to_string(),
+                        "go" => "go-no-hidden-owner-concept".to_string(),
+                        "rs" => "rs-no-hidden-owner-concept".to_string(),
                         _ => "ts-no-hidden-owner-concept".to_string(),
                     }),
                     violation_class: Some("surface_hidden_owner_concept".to_string()),
@@ -2453,7 +2738,9 @@ struct SymbolRecord {
 fn extract_symbols(extension: &str, content: &str) -> Vec<SymbolRecord> {
     match extension {
         "py" => extract_python_symbols(content),
-        "ts" | "cts" | "mts" => extract_typescript_symbols(content),
+        "ts" | "tsx" | "cts" | "mts" => extract_typescript_symbols(content),
+        "go" => extract_go_symbols(content),
+        "rs" => extract_rust_symbols(content),
         _ => Vec::new(),
     }
 }
@@ -2519,6 +2806,174 @@ fn extract_typescript_symbols(content: &str) -> Vec<SymbolRecord> {
             })
         })
         .collect()
+}
+
+fn extract_go_symbols(content: &str) -> Vec<SymbolRecord> {
+    go_symbol_regex()
+        .captures_iter(content)
+        .filter_map(|captures| {
+            let name = captures.get(2)?.as_str().to_string();
+            let start = captures.get(0)?.start();
+            let line = content[..start].bytes().filter(|b| *b == b'\n').count() + 1;
+            let snippet = content
+                .lines()
+                .nth(line.saturating_sub(1))
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            Some(SymbolRecord {
+                exported: is_go_exported_name(&name),
+                restricted: !is_go_exported_name(&name),
+                name,
+                line,
+                snippet,
+            })
+        })
+        .collect()
+}
+
+fn extract_rust_symbols(content: &str) -> Vec<SymbolRecord> {
+    let reexports = rust_reexported_symbols(content);
+    let test_mask = rust_test_only_line_mask(content);
+    rust_symbol_regex()
+        .captures_iter(content)
+        .filter_map(|captures| {
+            let name = captures.get(3)?.as_str().to_string();
+            let start = captures.get(0)?.start();
+            let line = content[..start].bytes().filter(|b| *b == b'\n').count() + 1;
+            if test_mask
+                .get(line.saturating_sub(1))
+                .copied()
+                .unwrap_or(false)
+            {
+                return None;
+            }
+            let snippet = content
+                .lines()
+                .nth(line.saturating_sub(1))
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let visibility = captures
+                .get(1)
+                .map(|value| value.as_str())
+                .unwrap_or_default();
+            let exported = visibility.starts_with("pub ")
+                || visibility.trim() == "pub"
+                || reexports.contains(&name);
+            let restricted = !exported;
+            Some(SymbolRecord {
+                exported,
+                restricted,
+                name,
+                line,
+                snippet,
+            })
+        })
+        .collect()
+}
+
+fn is_go_exported_name(name: &str) -> bool {
+    name.chars()
+        .next()
+        .map(|ch| ch.is_uppercase())
+        .unwrap_or(false)
+}
+
+fn rust_reexported_symbols(content: &str) -> BTreeSet<String> {
+    let mut exports = BTreeSet::new();
+    for captures in rust_pub_use_regex().captures_iter(content) {
+        let body = captures
+            .get(1)
+            .map(|value| value.as_str())
+            .unwrap_or_default();
+        if let Some((_, alias)) = body.rsplit_once(" as ") {
+            let alias = alias.trim();
+            if !alias.is_empty() {
+                exports.insert(alias.to_string());
+            }
+            continue;
+        }
+        let last = body
+            .split("::")
+            .last()
+            .unwrap_or_default()
+            .trim()
+            .trim_end_matches(';')
+            .trim_matches('{')
+            .trim_matches('}')
+            .trim();
+        if !last.is_empty() && last != "*" {
+            exports.insert(last.to_string());
+        }
+    }
+    exports
+}
+
+fn rust_test_only_line_mask(content: &str) -> Vec<bool> {
+    let lines: Vec<&str> = content.lines().collect();
+    let line_offsets = line_start_offsets(content);
+    let mut mask = vec![false; lines.len()];
+
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if !(trimmed.starts_with("#[cfg(") && trimmed.contains("test")) {
+            continue;
+        }
+        let mut mod_line = index + 1;
+        while mod_line < lines.len()
+            && (lines[mod_line].trim().is_empty() || lines[mod_line].trim().starts_with("//"))
+        {
+            mod_line += 1;
+        }
+        if mod_line >= lines.len() {
+            continue;
+        }
+        let mod_trimmed = lines[mod_line].trim();
+        if !mod_trimmed.contains("mod ") || !mod_trimmed.contains('{') {
+            continue;
+        }
+        let open_offset = line_offsets.get(mod_line).copied().unwrap_or(content.len())
+            + lines[mod_line].find('{').unwrap_or(0);
+        if let Some(close_offset) = matching_brace_offset(content, open_offset) {
+            let end_line = content[..close_offset]
+                .bytes()
+                .filter(|b| *b == b'\n')
+                .count();
+            for line_index in mod_line..=end_line.min(mask.len().saturating_sub(1)) {
+                mask[line_index] = true;
+            }
+        }
+    }
+
+    mask
+}
+
+fn line_start_offsets(content: &str) -> Vec<usize> {
+    let mut offsets = vec![0];
+    for (index, byte) in content.bytes().enumerate() {
+        if byte == b'\n' {
+            offsets.push(index + 1);
+        }
+    }
+    offsets
+}
+
+fn matching_brace_offset(content: &str, open_offset: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, ch) in content[open_offset..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(open_offset + index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 #[derive(Clone, Copy)]
@@ -2659,6 +3114,22 @@ fn has_boundary_signal(content: &str, symbols: &[SymbolRecord]) -> bool {
         || content.contains("model_validate(")
         || content.contains("z.object(")
         || content.contains(".parse(")
+        || content.contains("json.Unmarshal(")
+        || content.contains(".Decode(")
+        || content.contains("http.Request")
+        || content.contains("http.ResponseWriter")
+        || content.contains("chi.URLParam(")
+        || content.contains("ShouldBindJSON(")
+        || content.contains("BindJSON(")
+        || content.contains("serde::Deserialize")
+        || content.contains("serde::Serialize")
+        || content.contains("Deserialize)")
+        || content.contains("Serialize)")
+        || content.contains("axum::Json")
+        || content.contains("extract::Json")
+        || content.contains("tonic::Request")
+        || content.contains("http::Request")
+        || content.contains("serde_json::from_")
         || symbols.iter().any(|symbol| {
             let base = symbol.name.trim_start_matches('_');
             ["Payload", "Request", "Response", "Parser", "Settings"]
@@ -2951,7 +3422,7 @@ fn matches_skip_globs(matcher: &[Pattern], path: &Path, scan_root: &Path) -> boo
 fn is_supported_source(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|ext| ext.to_str()),
-        Some("py" | "ts" | "cts" | "mts")
+        Some("py" | "ts" | "tsx" | "cts" | "mts" | "go" | "rs")
     )
 }
 

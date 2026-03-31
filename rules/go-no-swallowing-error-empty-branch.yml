@@ -1,0 +1,31 @@
+id: go-no-swallowing-error-empty-branch
+language: Go
+severity: error
+files:
+  - '**/*.go'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/*_test.go'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+  - '**/*.pb.go'
+  - '**/*.gen.go'
+  - '**/zz_generated*.go'
+rule:
+  any:
+    - pattern: |
+        if err != nil {
+        }
+    - pattern: if err != nil {}
+message: 'Empty error branch removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Prefer a typed error, explicit optional handling, or a resilience adapter.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

@@ -207,6 +207,197 @@ fn typescript_nullish_is_violation_v3() {
 }
 
 #[test]
+fn tsx_nullish_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/typescript/fallback/should_fail/nullish.tsx");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-fallback-nullish")["kind"],
+        "violation"
+    );
+    assert_eq!(summary_count(&value, "violations"), 1);
+}
+
+#[test]
+fn tsx_hidden_owner_concept_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/typescript/fallback/should_fail/hidden_payload.tsx");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(summary_count(&value, "violations"), 1);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+}
+
+#[test]
+fn go_getenv_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/fallback/should_fail/getenv_default.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-fallback-getenv-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn go_lookupenv_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/fallback/should_fail/lookupenv_default.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-fallback-lookupenv-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn go_error_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/fallback/should_fail/error_return_default.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-swallowing-error-return-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn go_empty_error_branch_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/fallback/should_fail/error_empty_branch.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-swallowing-error-empty-branch")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn go_runtime_fake_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/test_double/should_fail/runtime_fake.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-test-double-identifier")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
+fn go_runtime_test_support_import_is_violation_v3() {
+    let output =
+        run_repo_scan_file("fixtures/go/test_double/should_fail/runtime_test_support_import.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-test-support-import")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
+fn go_hidden_owner_concept_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/go/fallback/should_fail/hidden_payload.go");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+}
+
+#[test]
+fn rust_unwrap_or_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/unwrap_or.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-fallback-unwrap-or")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn rust_unwrap_or_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/unwrap_or_default.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-fallback-unwrap-or-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn rust_map_or_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/map_or.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-fallback-map-or")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn rust_match_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/match_default.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-swallowing-error-match-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn rust_if_let_default_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/if_let_default.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-swallowing-error-if-let")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn rust_runtime_fake_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/test_double/should_fail/runtime_fake.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-test-double-identifier")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
+fn rust_runtime_test_support_import_is_violation_v3() {
+    let output =
+        run_repo_scan_file("fixtures/rust/test_double/should_fail/runtime_test_support_import.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-test-support-import")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
+fn rust_hidden_owner_concept_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/rust/fallback/should_fail/hidden_payload.rs");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+}
+
+#[test]
 fn hook_response_is_compact_and_persists_v3_report() {
     let report_dir = unique_temp_dir("reports");
     let fixture = fixture_path("fixtures/python/fallback/should_fail/get_default.py");
@@ -448,6 +639,35 @@ fn scan_tree_catches_structural_v3_findings() {
 }
 
 #[test]
+fn scan_tree_discovers_go_and_rust_sources() {
+    let root = unique_temp_dir("scan-tree-go-rust");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.go",
+        "package api\n\ntype toolUsePayload struct{}\n",
+    );
+    write_file(&root, "src/api/tool_use.rs", "struct ToolUsePayload;\n");
+
+    let config = root.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-tree", "--root", &config, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(value["summary"]["files_scanned"], 2);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-hidden-owner-concept")["violation_class"],
+        "surface_hidden_owner_concept"
+    );
+}
+
+#[test]
 fn boundary_parser_without_contract_is_hole() {
     let root = unique_temp_dir("boundary-hole");
     write_minimal_project(&root);
@@ -473,6 +693,199 @@ fn boundary_parser_without_contract_is_hole() {
             .unwrap()
             .contains("contract witness")
     );
+}
+
+#[test]
+fn go_boundary_parser_without_contract_is_hole() {
+    let root = unique_temp_dir("boundary-hole-go");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.go",
+        r#"package api
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type ToolUsePayload struct {
+	ToolUseID string `json:"toolUseId"`
+}
+
+func ParseToolUse(r *http.Request) ToolUsePayload {
+	var payload ToolUsePayload
+	_ = json.NewDecoder(r.Body).Decode(&payload)
+	return payload
+}
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.go");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "holes") >= 1);
+    assert!(
+        finding_by_kind(&value, "hole")["message"]
+            .as_str()
+            .unwrap()
+            .contains("contract witness")
+    );
+}
+
+#[test]
+fn rust_boundary_parser_without_contract_is_hole() {
+    let root = unique_temp_dir("boundary-hole-rust");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.rs",
+        r#"use axum::Json;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct ToolUsePayload {
+    tool_use_id: String,
+}
+
+pub async fn parse_tool_use(payload: Json<ToolUsePayload>) -> String {
+    payload.0.tool_use_id
+}
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.rs");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "holes") >= 1);
+    assert!(
+        finding_by_kind(&value, "hole")["message"]
+            .as_str()
+            .unwrap()
+            .contains("contract witness")
+    );
+}
+
+#[test]
+fn go_adapter_choice_outside_composition_root_is_violation() {
+    let root = unique_temp_dir("adapter-go");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "policy/adapters.yml",
+        r#"
+ports:
+  UserRepository:
+    allowed_runtime_adapters:
+      - SqlUserRepository
+"#,
+    );
+    write_file(
+        &root,
+        "src/api/tool_use.go",
+        r#"package api
+
+func BuildRepository() any {
+	return NewSqlUserRepository()
+}
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.go");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "go-no-adapter-choice-outside-composition-root")["violation_class"],
+        "adapter_choice_outside_composition_root"
+    );
+}
+
+#[test]
+fn rust_adapter_choice_outside_composition_root_is_violation() {
+    let root = unique_temp_dir("adapter-rust");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "policy/adapters.yml",
+        r#"
+ports:
+  UserRepository:
+    allowed_runtime_adapters:
+      - SqlUserRepository
+"#,
+    );
+    write_file(
+        &root,
+        "src/api/tool_use.rs",
+        r#"pub fn build_repository() -> SqlUserRepository {
+    SqlUserRepository::new()
+}
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.rs");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "rs-no-adapter-choice-outside-composition-root")["violation_class"],
+        "adapter_choice_outside_composition_root"
+    );
+}
+
+#[test]
+fn rust_cfg_test_module_is_ignored_for_runtime_double_rules() {
+    let root = unique_temp_dir("rust-cfg-test");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.rs",
+        r#"#[cfg(test)]
+mod tests {
+    use mockall::predicate::*;
+
+    #[test]
+    fn allows_test_only_mock_usage() {
+        let fake_repo = 1;
+        assert!(eq(1).eval(&fake_repo));
+    }
+}
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.rs");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(output.status.success());
+    let value = stdout_json(&output);
+    assert!(value["findings"].as_array().unwrap().is_empty());
 }
 
 #[test]

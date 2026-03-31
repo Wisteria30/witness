@@ -3,13 +3,16 @@ language: TypeScript
 severity: error
 files:
   - '**/*.ts'
+  - '**/*.tsx'
   - '**/*.cts'
   - '**/*.mts'
 ignores:
   - '**/test/**'
   - '**/tests/**'
   - '**/*.test.ts'
+  - '**/*.test.tsx'
   - '**/*.spec.ts'
+  - '**/*.spec.tsx'
   - '**/__tests__/**'
   - '**/generated/**'
   - '**/openapi/**'

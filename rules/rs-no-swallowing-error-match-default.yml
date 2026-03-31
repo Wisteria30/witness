@@ -1,0 +1,33 @@
+id: rs-no-swallowing-error-match-default
+language: Rust
+severity: error
+files:
+  - '**/*.rs'
+ignores:
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/__tests__/**'
+  - '**/generated/**'
+  - '**/openapi/**'
+  - '**/swagger/**'
+  - '**/codegen/**'
+  - '**/__generated__/**'
+rule:
+  any:
+    - pattern: |
+        match $EXPR {
+          Ok($VALUE) => $VALUE,
+          Err($ERR) => $DEFAULT,
+        }
+    - pattern: |
+        match $EXPR {
+          Some($VALUE) => $VALUE,
+          None => $DEFAULT,
+        }
+message: 'Matching Err or None into a default removes failure without a lawful owner or witness'
+note: 'Repair at the owner layer. Prefer explicit optional handling or a typed error.'
+metadata:
+  policy_group: fallback
+  violation_class: fallback_unowned_handler
+  owner_hint: application
+  approval_mode: none

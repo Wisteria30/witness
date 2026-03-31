@@ -1,31 +1,26 @@
-id: ts-no-test-double-identifier
-language: TypeScript
+id: go-no-test-double-import
+language: Go
 severity: error
 files:
-  - '**/*.ts'
-  - '**/*.tsx'
-  - '**/*.cts'
-  - '**/*.mts'
+  - '**/*.go'
 ignores:
   - '**/test/**'
   - '**/tests/**'
-  - '**/*.test.ts'
-  - '**/*.test.tsx'
-  - '**/*.spec.ts'
-  - '**/*.spec.tsx'
+  - '**/*_test.go'
   - '**/__tests__/**'
   - '**/generated/**'
   - '**/openapi/**'
   - '**/swagger/**'
   - '**/codegen/**'
   - '**/__generated__/**'
+  - '**/*.pb.go'
+  - '**/*.gen.go'
+  - '**/zz_generated*.go'
 rule:
   any:
-    - kind: identifier
-      regex: '(?i)(mock|stub|fake)'
-    - kind: type_identifier
-      regex: '(?i)(mock|stub|fake)'
-message: 'Runtime TypeScript code must not contain mock/stub/fake identifiers'
+    - pattern: import "github.com/stretchr/testify/mock"
+    - pattern: import "go.uber.org/mock/gomock"
+message: 'Runtime Go code must not import test-double tooling'
 note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
 metadata:
   policy_group: test-double

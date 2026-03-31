@@ -1,18 +1,11 @@
-id: ts-no-test-double-identifier
-language: TypeScript
+id: rs-no-test-double-identifier
+language: Rust
 severity: error
 files:
-  - '**/*.ts'
-  - '**/*.tsx'
-  - '**/*.cts'
-  - '**/*.mts'
+  - '**/*.rs'
 ignores:
   - '**/test/**'
   - '**/tests/**'
-  - '**/*.test.ts'
-  - '**/*.test.tsx'
-  - '**/*.spec.ts'
-  - '**/*.spec.tsx'
   - '**/__tests__/**'
   - '**/generated/**'
   - '**/openapi/**'
@@ -20,12 +13,9 @@ ignores:
   - '**/codegen/**'
   - '**/__generated__/**'
 rule:
-  any:
-    - kind: identifier
-      regex: '(?i)(mock|stub|fake)'
-    - kind: type_identifier
-      regex: '(?i)(mock|stub|fake)'
-message: 'Runtime TypeScript code must not contain mock/stub/fake identifiers'
+  kind: identifier
+  regex: '(?i)(mock|stub|fake)'
+message: 'Runtime Rust code must not contain mock/stub/fake identifiers'
 note: 'Runtime code must not rely on test doubles. Move it to tests or promote it to a first-class adapter with contract tests and composition-root selection.'
 metadata:
   policy_group: test-double

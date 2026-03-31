@@ -10,6 +10,13 @@ It does not try to replace normal planning or design review. It focuses on a nar
 - make public vs internal interfaces explicit
 - make boundary promises and context boundaries visible
 
+Current language support:
+
+- Python
+- TypeScript family: `.ts`, `.tsx`, `.cts`, `.mts`
+- Go: `.go`
+- Rust: `.rs`
+
 If you want the deeper model behind `constitution`, `charter`, finding kinds, and policy files, start with [docs/core-concepts.md](docs/core-concepts.md).
 
 ---
