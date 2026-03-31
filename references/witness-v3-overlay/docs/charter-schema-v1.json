@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://witness.local/schemas/charter-schema-v1.json",
+  "title": "witness charter v1",
+  "type": "object",
+  "required": ["version", "change_id", "constitution_mode"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "change_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constitution_mode": {
+      "type": "string",
+      "enum": ["preserve", "extend"]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["approved-plan", "plan-file", "inline-delta", "manual"]
+        },
+        "ref": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "surfaces": {
+      "type": "object",
+      "properties": {
+        "public_symbols": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["public_concept", "subclass_api", "internal_mechanic"]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "contexts": {
+      "type": "object",
+      "properties": {
+        "assignments": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "contracts": {
+      "type": "object",
+      "properties": {
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "compatibility"],
+            "properties": {
+              "id": {"type": "string"},
+              "kind": {
+                "type": "string",
+                "enum": ["shape", "interaction", "law"]
+              },
+              "compatibility": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "approvals": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "adapters": {
+      "type": "object",
+      "properties": {
+        "add": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "holes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "question"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["surface", "context", "contract", "default_or_optionality", "adapter"]
+          },
+          "question": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

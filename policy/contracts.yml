@@ -1,0 +1,42 @@
+# Boundary and inter-context contracts.
+#
+# Contracts are first-class constitutional objects.
+# They are the witness for what may cross a boundary and how compatibility is judged.
+#
+# Kinds:
+# - shape: static payload/data shape contract
+# - interaction: consumer/provider interaction contract
+# - law: in-process behavioral law for a port
+#
+# Compatibility examples:
+# - exact
+# - backward_additive
+# - additive_fields_only
+# - no_breaking_change
+# - explicit_migration_required
+
+contracts:
+  http.tool_use_payload.v1:
+    kind: shape
+    context: api_boundary
+    owner_layer: boundary
+    schema: schemas/http/tool_use_payload.v1.json
+    compatibility: exact
+    witnesses:
+      - tests/contracts/http/test_tool_use_payload_schema.py
+
+  event.order_placed.v1:
+    kind: interaction
+    context: ordering
+    owner_layer: boundary
+    schema: schemas/events/order_placed.v1.json
+    compatibility: backward_additive
+    witnesses:
+      - tests/contracts/events/test_order_placed_provider.py
+
+  port.user_repository:
+    kind: law
+    context: identity
+    owner_layer: application
+    witnesses:
+      - tests/contracts/test_user_repository_contract.py

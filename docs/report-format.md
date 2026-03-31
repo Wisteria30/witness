@@ -2,55 +2,58 @@
 
 Pending reports are JSON documents written under `${CLAUDE_PLUGIN_DATA}/reports/pending/`.
 
-Each report is keyed by source file, and each history snapshot gets a unique `report_id`.
+Each report is keyed by the canonical file path that currently owns the unresolved findings. That can be a source file or an active charter file.
 
 ## Example
 
 ```json
 {
-  "schema_version": 1,
-  "report_id": "cg-1764456123456-0001",
-  "created_at_ms": 1764456123456,
+  "version": 3,
+  "report_id": "wg-9c1dbf10f7e0a0b2-0001",
+  "created_at": "2026-03-31T12:34:56Z",
+  "status": "pending",
+  "charter_ref": "CHG-1",
   "file": "src/api/tool_use.py",
   "canonical_file": "/abs/path/src/api/tool_use.py",
-  "capsule": "guardrail count=1 classes=fallback_unowned_default owners=boundary remedies=boundary_parser|typed_exception|approved_policy_api forbidden=rename|equivalent_rewrite|new_inline_default",
   "summary": {
     "files_scanned": 1,
-    "violation_count": 1,
-    "classes": {
-      "fallback_unowned_default": 1
-    },
-    "owners": {
-      "boundary": 1
+    "violations": 1,
+    "holes": 0,
+    "drift": 0,
+    "obligations": 0,
+    "by_kind": {
+      "violation": 1
     },
     "by_file": {
       "src/api/tool_use.py": 1
     }
   },
-  "violations": [
+  "findings": [
     {
+      "kind": "violation",
       "file": "src/api/tool_use.py",
       "canonical_file": "/abs/path/src/api/tool_use.py",
       "line": 7,
       "rule_id": "py-no-fallback-get-default",
-      "policy_group": "fallback",
       "violation_class": "fallback_unowned_default",
-      "owner_guess": "boundary",
-      "owner_hint": "boundary",
-      "message": "Inline default owns policy at the wrong layer.",
-      "code": "tool_use_id = event.tool_use.get(\"toolUseId\", \"tool\")",
-      "legal_remedies": [
+      "owner_layer": "boundary",
+      "snippet": "tool_use_id = event.tool_use.get(\"toolUseId\", \"tool\")",
+      "message": "Dictionary get default owns policy at the wrong layer (missing registry-backed approval comment)",
+      "required_judgements": [
+        "owner",
+        "default_or_optionality"
+      ],
+      "remedy_candidates": [
         "approved_policy_api",
         "boundary_parser",
         "typed_exception",
         "optional_exhaustive_handling"
       ],
-      "forbidden_moves": [
-        "rename",
-        "equivalent_rewrite",
-        "new_inline_default"
-      ],
-      "approval_status": "missing"
+      "proof_options": [
+        "registered approval id",
+        "parser/schema validation",
+        "typed exception test"
+      ]
     }
   ]
 }
@@ -58,7 +61,9 @@ Each report is keyed by source file, and each history snapshot gets a unique `re
 
 ## Semantics
 
-- `pending/` is the authoritative unresolved set
-- `history/` is append-only audit history
-- `capsule` is the short string that may be passed into `additionalContext`
-- `approval_status` can be `missing`, `approved`, or `invalid`
+- `pending/` is the authoritative unresolved set.
+- `history/` is append-only audit history.
+- `status` is `pending` for machine-decidable work and `needs_charter_decision` when a narrow constitutional judgement remains unresolved.
+- `charter_ref` is populated when active charter files were consumed during the scan.
+- `findings.kind` is one of `violation`, `hole`, `drift`, or `obligation`.
+- `canonical_file` may point at a charter file when the unresolved work belongs to the charter rather than source code.

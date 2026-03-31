@@ -1,8 +1,9 @@
 ---
 name: add-rule
-description: "Use when the user asks to add a rule, detect a pattern, fix a false positive/negative, or improve detection coverage."
+description: "Add or fix an ast-grep detection rule. Use when adding a rule, fixing a false positive/negative, or improving detection coverage."
 disable-model-invocation: true
 allowed-tools: Bash, Read, Grep, Glob, Edit, Write
+argument-hint: [rule-name-or-pattern]
 ---
 
 # Add Rule
@@ -18,12 +19,19 @@ Identify which situation applies:
 Collect:
 1. **The actual code** (the NG example)
 2. **Language** — Python / TypeScript / both
-3. **Policy group** — `test-double` or `fallback`
-4. **Violation class** — `fallback_unowned_default`, `fallback_unowned_handler`, `runtime_double_in_graph`, or `adapter_choice_outside_composition_root`
-5. **Owner hint** — which layer typically owns this (boundary, domain, etc.)
+3. **Policy group** — `test-double`, `fallback`, `surface`, or `contract`
+4. **Violation class** — one of:
+   - `fallback_unowned_default` — implicit default without owner
+   - `fallback_unowned_handler` — swallowed error or silent catch
+   - `runtime_double_in_graph` — test double in non-test code
+   - `adapter_choice_outside_composition_root` — adapter wiring in wrong layer
+   - `hidden_owner_concept` — owner-layer symbol behind restricted visibility
+   - `missing_surface_witness` — public concept without export manifest
+   - `missing_contract_witness` — boundary crossing without contract
+5. **Owner hint** — which layer typically owns this (boundary, domain, application, infrastructure, composition_root, tests)
 6. **Approval mode**:
    - `registry_policy_comment` — approvable via `policy-approved: REQ-xxx` (typical for fallback rules)
-   - `none` — never approvable (test-double rules)
+   - `none` — never approvable (test-double, surface, and contract rules)
 7. **OK examples** — similar syntax that should NOT be flagged
 
 ### B. False negative — "This code should be caught but isn't"
@@ -53,11 +61,13 @@ Every rule MUST have metadata:
 
 ```yaml
 metadata:
-  policy_group: fallback|test-double
-  violation_class: fallback_unowned_default|fallback_unowned_handler|runtime_double_in_graph|adapter_choice_outside_composition_root
+  policy_group: fallback|test-double|surface|contract
+  violation_class: fallback_unowned_default|fallback_unowned_handler|runtime_double_in_graph|adapter_choice_outside_composition_root|hidden_owner_concept|missing_surface_witness|missing_contract_witness
   owner_hint: boundary|domain|application|infrastructure|composition_root|tests
   approval_mode: registry_policy_comment|none
 ```
+
+Rules should stay focused on cheap syntactic surfaces. They are not the place for deep semantics or project-scale reasoning. Use `policy/surfaces.yml`, `policy/contracts.yml`, and `policy/contexts.yml` for semantic policy.
 
 ## Step 3: Write fixtures
 

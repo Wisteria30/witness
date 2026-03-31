@@ -1,73 +1,76 @@
-# Migration guide: current witness -> vNext
+# Migration guide: witness v2 -> witness v3
 
-This repository keeps the same core stack as the current public plugin—Rust orchestration, `ripgrep` for discovery, and `ast-grep` for syntax rules—but changes what happens after detection.
+This repository keeps the same core stack—Rust orchestration, `ripgrep` for discovery, and `ast-grep` for syntax rules—but upgrades the runtime contract from v2 guardrails to the v3 constitutional kernel.
 
-## 1. Replace comment-only approval with registry-backed approval
-
-Before:
-
-- adjacent `policy-approved:` comments suppressed findings on their own
-
-After:
-
-- `policy-approved:` comments are only valid when the ID is registered in `policy/defaults.yml`
-- the file must belong to an allowed owner layer in `policy/ownership.yml`
-- invalid approval IDs still surface as violations
-
-## 2. Split detection from repair
+## 1. Adopt the v3 constitution
 
 Before:
 
-- hot-path hooks pushed the full scan output into `additionalContext`
+- `ownership/defaults/adapters` were the only effective verifier inputs
 
 After:
 
-- the sync hook stores a detailed JSON report under `${CLAUDE_PLUGIN_DATA}/reports/pending/`
-- Claude only receives a short capsule plus the report path
-- the repair doctrine lives in `skills/repair/`
-- the heavy fix path is delegated to `agents/guardrail-repairer.md`
+- the verifier consumes `policy/ownership.yml`
+- the verifier consumes `policy/defaults.yml`
+- the verifier consumes `policy/adapters.yml`
+- the verifier consumes `policy/surfaces.yml`
+- the verifier consumes `policy/contracts.yml`
+- the verifier consumes `policy/contexts.yml`
 
-## 3. Add authoritative stop gates
+## 2. Move from violations-only reports to finding kinds
 
 Before:
 
-- only `PostToolUse` blocked
+- reports stored only `violations`
+- stop gates blocked only on unresolved pending reports
 
 After:
 
-- `PostToolUse` still gives immediate feedback
-- `Stop` and `SubagentStop` refuse to finish while unresolved reports remain
-- this supports multi-edit owner-layer repairs without rewarding local escape rewrites
+- reports store `findings`
+- each finding has kind `violation`, `hole`, `drift`, or `obligation`
+- stop gates block on any unresolved report, including pending charter decisions and charter obligations
 
-## 4. Add ownership policy
+## 3. Add charter-aware verification
 
-Create or adapt `policy/ownership.yml` so the verifier can distinguish:
+Before:
 
-- boundaries
-- domain
-- application
-- infrastructure
-- composition root
-- tests
+- scan commands evaluated only repo policy
+- no per-change constitutional delta could be supplied to the engine
 
-Without this file, the verifier can still classify by rule hint, but it cannot validate approvals or composition-root-only adapter selection precisely.
+After:
 
-## 5. Add adapter registry + contract suites
+- `scan-file`, `scan-tree`, `scan-hook`, and `scan-stop` accept optional `--charter-dir`
+- active charter files under `${CLAUDE_PLUGIN_DATA}/charters/active` are consumed automatically by the hooks
+- charter-declared work can produce `obligation` findings until it is compiled into code or durable policy
 
-Populate `policy/adapters.yml` with lawful runtime adapters and the contract tests that justify them.
+## 4. Tighten approval semantics
 
-Anything not listed there should be treated as suspect runtime substitution.
+Before:
 
-## 6. Update your project instructions
+- a registered approval id plus an allowed owner layer was enough
 
-Keep `CLAUDE.md` short and stable:
+After:
 
-- a fallback is an effect handler, not a convenience
-- a production substitute is an adapter, not a fake
-- when a guardrail fires, repair at the owner layer and add one witness
-- forbidden: rename-only, equivalent rewrites, invented approval IDs, runtime test-support imports
+- the approval id must exist in `policy/defaults.yml`
+- the file must belong to an allowed owner layer
+- the blessed symbol must match the call site
 
-## 7. Use the new commands
+## 5. Expect breaking JSON changes
 
-- `/scan` for triage in forked context
-- `/repair <report-path-or-file>` for actual repair work
+Before:
+
+- scan JSON used `summary.violation_count`
+- pending reports used `schema_version: 1` and `violations[]`
+
+After:
+
+- scan JSON uses `summary.{violations,holes,drift,obligations}`
+- pending reports use `version: 3`, `status`, `charter_ref`, and `findings[]`
+- hook block responses mention the full v3 finding mix
+
+## 6. Update operational workflow
+
+- run `/witness:charter` after the broad plan is approved when the change extends the constitution
+- run `/witness:scan` to obtain v3 findings
+- if there are `hole` findings, answer the narrow charter questions first
+- if there are `violation`, `drift`, or `obligation` findings, run `/witness:repair`

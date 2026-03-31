@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  validate-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate shell scripts
+        run: bash -n hooks/*.sh setup scripts/*.sh
+
+  validate-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate JSON files
+        run: |
+          jq empty .claude-plugin/plugin.json
+          jq empty marketplace.json
+          jq empty hooks/hooks.json
+      - name: Check executables
+        run: |
+          test -x hooks/post-edit-classify.sh
+          test -x hooks/post-edit-audit.sh
+          test -x hooks/stop-gate.sh
+          test -x hooks/session-start.sh
+          test -x setup
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Install ast-grep
+        run: cargo install ast-grep --locked
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --all-targets

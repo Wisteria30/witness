@@ -32,16 +32,18 @@ fn json_version(path: &str) -> String {
 }
 
 fn marketplace_version() -> String {
-    let text = fs::read_to_string(repo_root().join("marketplace.json"))
-        .expect("could not read marketplace.json");
-    let value: Value = serde_json::from_str(&text).expect("invalid JSON: marketplace.json");
+    let path = ".claude-plugin/marketplace.json";
+    let text = fs::read_to_string(repo_root().join(path))
+        .unwrap_or_else(|_| panic!("could not read {path}"));
+    let value: Value =
+        serde_json::from_str(&text).unwrap_or_else(|_| panic!("invalid JSON: {path}"));
     let plugins = value["plugins"]
         .as_array()
-        .expect("no plugins array in marketplace.json");
-    assert!(!plugins.is_empty(), "marketplace.json has no plugins entry");
+        .unwrap_or_else(|| panic!("no plugins array in {path}"));
+    assert!(!plugins.is_empty(), "{path} has no plugins entry");
     plugins[0]["version"]
         .as_str()
-        .expect("no version in marketplace.json plugins[0]")
+        .unwrap_or_else(|| panic!("no version in {path} plugins[0]"))
         .to_string()
 }
 

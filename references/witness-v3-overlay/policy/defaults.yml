@@ -1,0 +1,19 @@
+defaults:
+  REQ-123:
+    symbol: LocalePolicy.default_locale
+    allowed_layers:
+      - boundary
+    reason: Locale fallback is explicitly defined by product requirements.
+
+  ADR-7:
+    symbol: DemoLabelPolicy.resolve
+    allowed_layers:
+      - boundary
+      - infrastructure
+    reason: Demo mode label fallback is documented in the architecture decision record.
+
+  SPEC-42:
+    symbol: SettingsPolicy.default_port
+    allowed_layers:
+      - boundary
+    reason: The port fallback is part of the published service specification.

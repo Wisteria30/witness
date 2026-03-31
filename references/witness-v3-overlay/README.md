@@ -169,7 +169,7 @@ witness v3 is built around a repo **constitution** and a per-change **charter**.
 - **Constitution (`K₀`)** lives in `policy/*.yml` and defines durable rules for ownership, defaults, adapters, surfaces, contracts, and bounded contexts.
 - **Charter (`ΔK_w`)** is a sparse, change-local projection of an approved broad plan. It records only the witness-relevant intent for the current change.
 
-`witness` never tries to replace Claude Code's general planning workflows. It extracts only the narrow normative fragment that scan/repair need to know.
+`witness` never tries to replace Claude Code’s general planning workflows. It extracts only the narrow normative fragment that scan/repair need to know.
 
 The effective environment for evaluation is:
 
@@ -309,7 +309,7 @@ These are project-specific. Configure them for your codebase.
 
 ## Skills
 
-All operational witness skills are **explicit-only**. They are not meant to auto-fire and compete with Claude Code's built-in planning machinery.
+All operational witness skills are **explicit-only**. They are not meant to auto-fire and compete with Claude Code’s built-in planning machinery.
 
 | Skill | What it does |
 |-------|--------------|

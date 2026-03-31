@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://witness.local/schemas/report-schema-v3.json",
+  "title": "witness report v3",
+  "type": "object",
+  "required": [
+    "version",
+    "report_id",
+    "status",
+    "file",
+    "findings"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 3
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "charter_ref": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "resolved", "needs_charter_decision"]
+    },
+    "file": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonical_file": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "files_scanned": {"type": "integer", "minimum": 0},
+        "violations": {"type": "integer", "minimum": 0},
+        "holes": {"type": "integer", "minimum": 0},
+        "drift": {"type": "integer", "minimum": 0},
+        "obligations": {"type": "integer", "minimum": 0},
+        "by_kind": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "by_file": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "message"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["violation", "hole", "drift", "obligation"]
+          },
+          "file": {"type": "string"},
+          "canonical_file": {"type": "string"},
+          "violation_class": {"type": "string"},
+          "owner_layer": {"type": "string"},
+          "context_hint": {"type": "string"},
+          "surface_hint": {"type": "string"},
+          "contract_kind": {
+            "type": "string",
+            "enum": ["shape", "interaction", "law"]
+          },
+          "compatibility": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "snippet": {"type": "string"},
+          "message": {"type": "string", "minLength": 1},
+          "required_judgements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "surface",
+                "context",
+                "default_or_optionality",
+                "adapter",
+                "contract"
+              ]
+            }
+          },
+          "remedy_candidates": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "proof_options": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

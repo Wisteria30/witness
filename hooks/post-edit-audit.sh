@@ -4,6 +4,7 @@ set -euo pipefail
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
 REPORT_DIR="$DATA_DIR/reports"
+CHARTER_DIR="$DATA_DIR/charters/active"
 ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 
 # Skip if running inside a git worktree (repair agent context)
@@ -19,7 +20,11 @@ if [ ! -x "$ENGINE_BIN" ]; then
 fi
 
 set +e
-"$ENGINE_BIN" scan-tree --root "$(pwd)" --config-dir "$PLUGIN_DIR" --report-dir "$REPORT_DIR" >/dev/null 2>&1
+CMD=("$ENGINE_BIN" scan-tree --root "$(pwd)" --config-dir "$PLUGIN_DIR" --report-dir "$REPORT_DIR")
+if [ -d "$CHARTER_DIR" ]; then
+  CMD+=(--charter-dir "$CHARTER_DIR")
+fi
+"${CMD[@]}" >/dev/null 2>&1
 STATUS=$?
 set -e
 

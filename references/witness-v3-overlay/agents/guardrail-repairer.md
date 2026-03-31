@@ -1,10 +1,9 @@
 ---
 name: guardrail-repairer
-description: Repair unresolved witness reports via owner-layer refactors, surface normalization, context clarification, and contract witnesses. Handles single or batch reports. Never accepts rename-only or syntax-equivalent escapes.
+description: Use for unresolved witness reports that require owner-layer refactors, lawful defaults, typed errors, adapter rewiring, surface normalization, context clarification, or contract-test additions. Handles single or multiple reports. Never accept rename-only or syntax-equivalent escapes.
 model: opus
 effort: high
 maxTurns: 50
-tools: Read, Grep, Glob, Bash, Write, Edit, WebSearch, WebFetch, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs
 skills:
   - repair
 isolation: worktree

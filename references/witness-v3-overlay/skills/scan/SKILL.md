@@ -33,6 +33,8 @@ ${CLAUDE_PLUGIN_ROOT}/bin/witness-engine scan-tree \
   --report-dir ${CLAUDE_PLUGIN_DATA}/reports
 ```
 
+If the current engine build does not yet support `--charter-dir`, fall back to the existing command without it and state that charter-aware verification is pending engine support.
+
 ### 3. Enumerate pending reports
 List files under `${CLAUDE_PLUGIN_DATA}/reports/pending/`.
 

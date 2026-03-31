@@ -1,0 +1,93 @@
+# Bounded contexts and vocabulary.
+#
+# This file gives public concepts a unique semantic home.
+# The goal is not directory hygiene alone, but meaning partition.
+#
+# Each context should have:
+# - owned paths
+# - its own vocabulary
+# - allowed dependencies on other contexts
+# - explicit public entry points when relevant
+
+contexts:
+  api_boundary:
+    paths:
+      - "src/api/**"
+      - "src/http/**"
+      - "app/api/**"
+    vocabulary:
+      nouns:
+        - Payload
+        - Request
+        - Response
+        - Parser
+        - Settings
+      verbs:
+        - parse
+        - decode
+        - validate
+        - encode
+    may_depend_on:
+      - application
+      - shared_kernel
+    public_entrypoints:
+      - "src/api/__init__.py"
+
+  identity:
+    paths:
+      - "src/domain/identity/**"
+      - "src/application/identity/**"
+      - "app/domain/identity/**"
+    vocabulary:
+      nouns:
+        - User
+        - UserId
+        - Session
+        - Credential
+      verbs:
+        - register
+        - authenticate
+        - revoke
+    may_depend_on:
+      - shared_kernel
+    public_entrypoints:
+      - "src/domain/identity/__init__.py"
+
+  ordering:
+    paths:
+      - "src/domain/ordering/**"
+      - "src/application/ordering/**"
+      - "app/domain/ordering/**"
+    vocabulary:
+      nouns:
+        - Order
+        - OrderId
+        - Reservation
+        - LineItem
+      verbs:
+        - place
+        - cancel
+        - reserve
+        - confirm
+    may_depend_on:
+      - shared_kernel
+      - identity
+    public_entrypoints:
+      - "src/domain/ordering/__init__.py"
+
+  shared_kernel:
+    paths:
+      - "src/shared/**"
+      - "app/shared/**"
+    vocabulary:
+      nouns:
+        - Clock
+        - Uuid
+        - Money
+      verbs:
+        - parse
+        - compare
+        - format
+    may_depend_on: []
+    public_entrypoints:
+      - "src/shared/__init__.py"

@@ -46,7 +46,7 @@ Every new public concept must belong to exactly one bounded context.
 
 Ask:
 
-- which context's vocabulary names this concept?
+- which context’s vocabulary names this concept?
 - does the symbol mix nouns from multiple contexts?
 - is the symbol better moved than repaired in place?
 
@@ -148,11 +148,11 @@ If publicity is unclear, return `needs_charter_decision` with:
 - the two most likely classifications
 
 ### Interface witness
-After repair, the module's explicit export manifest must reflect the decision:
+After repair, the module’s explicit export manifest must reflect the decision:
 
 - Python: update `__all__` or explicit `__init__.py` re-exports
 - TypeScript: use named `export`
-- Other languages: use the language's idiomatic export/visibility mechanism
+- Other languages: use the language’s idiomatic export/visibility mechanism
 
 If a module gains new public symbols and has no export manifest, create one.
 
