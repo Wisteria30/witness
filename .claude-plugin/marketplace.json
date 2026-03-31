@@ -4,14 +4,14 @@
     "name": "Wisteria30"
   },
   "metadata": {
-    "description": "Repair-first guardrails for AI-generated production code."
+    "description": "Repair-first constitutional guardrails for AI-generated production code."
   },
   "plugins": [
     {
       "name": "witness",
       "source": "./",
-      "description": "Detect unowned fallbacks and runtime test doubles, then route repairs to the owning layer with report-backed hooks, policies, skills, and a repair subagent.",
-      "version": "3.2.0",
+      "description": "Detect constitutional drift in public surfaces, contracts, contexts, unsafe defaults, and runtime test doubles, then route repair-ready findings to the owning layer.",
+      "version": "3.3.0",
       "author": {
         "name": "Wisteria30"
       },

@@ -10,6 +10,14 @@ Batch repair pending reports in parallel.
 
 **Report directory**: Use `$ARGUMENTS` if provided, otherwise `${CLAUDE_PLUGIN_DATA}/reports/pending`.
 
+## Current state
+
+Pending reports:
+!`ls ${ARGUMENTS:-${CLAUDE_PLUGIN_DATA}/reports/pending}/*.json 2>/dev/null || echo "(none)"`
+
+Active charters:
+!`ls ${CLAUDE_PLUGIN_DATA}/charters/active/ 2>/dev/null || echo "(none)"`
+
 This skill consumes the active charter when present. It does not create or guess missing charter decisions.
 
 ## Workflow
@@ -22,7 +30,7 @@ ls ${ARGUMENTS:-${CLAUDE_PLUGIN_DATA}/reports/pending}/*.json
 
 If no reports exist, say `No pending reports found.` and stop.
 
-### 2. Read and group reports
+### 2. Read and classify reports
 For each `.json` file in the report directory:
 
 - read the report
@@ -30,7 +38,14 @@ For each `.json` file in the report directory:
 - extract `findings` / `violations`
 - note whether any finding kind is `hole`
 
-Group reports into **5 batches** by distributing evenly.
+If **all** reports contain `hole`, or reports containing `hole` are the majority, stop here.
+Tell the user to run `/witness:charter` first, or answer the missing constitutional questions manually.
+Do not dispatch repair agents in this case.
+
+If both repairable reports and hole reports exist, continue with only the repairable reports.
+Leave hole reports untouched and call them out explicitly in the summary.
+
+Group repairable reports into **5 batches** by distributing evenly.
 Reports affecting the same file **must** go in the same batch to avoid merge conflicts.
 
 ### 3. Load the active charter
@@ -67,7 +82,9 @@ After all 5 agents complete:
 
 1. For every returned worktree path, apply the changes to the main workspace and remove the worktree.
 2. Collect all `needs_charter_decision` items from all agents.
-3. Collect all `compiled_constitution` items from all agents.
+3. Collect all `compiled_constitution` items from all agents. Every item must include:
+   - `change_id`
+   - `policy_files`
 4. Summarize:
    - how many reports were resolved
    - how many remain
@@ -101,5 +118,21 @@ Based on the answer:
 - if they provide new context: use it to resolve only that narrow constitutional judgement
 
 ### 7. Final summary
-After all automated repairs and charter decisions are resolved, give a final summary and stop.
+After all automated repairs and charter decisions are resolved:
+
+1. re-scan to verify the repaired files are clean
+2. collect the unique `change_id` values from `compiled_constitution`
+3. run:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/bin/witness-engine retire-charters \
+  --change-id <change-id> \
+  --config-dir ${CLAUDE_PLUGIN_ROOT} \
+  --charter-dir ${CLAUDE_PLUGIN_DATA}/charters/active \
+  --report-dir ${CLAUDE_PLUGIN_DATA}/reports
+```
+
+Only retire a charter when the command succeeds. If retirement is skipped, report why and leave the charter active.
+
+After that, give a final summary and stop.
 Do not take further action.

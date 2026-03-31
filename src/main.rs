@@ -121,6 +121,11 @@ fn run(args: Vec<String>) -> Result<i32, String> {
             }
             Ok(if result.clean { 0 } else { 1 })
         }
+        Mode::RetireCharters { change_ids } => {
+            let result = retire_charters(&cli.common, &change_ids)?;
+            print_json(&result)?;
+            Ok(if result.clean { 0 } else { 1 })
+        }
     }
 }
 
@@ -151,6 +156,7 @@ enum Mode {
     ScanTree { root: PathBuf },
     ScanHook,
     ScanStop,
+    RetireCharters { change_ids: Vec<String> },
 }
 
 struct Cli {
@@ -182,6 +188,7 @@ impl Cli {
         let mut positional_root: Option<PathBuf> = None;
         let mut changed_only: Option<PathBuf> = None;
         let mut mode: Option<Mode> = None;
+        let mut retire_change_ids = Vec::new();
 
         while let Some(arg) = iter.pop_front() {
             match arg.as_str() {
@@ -196,6 +203,11 @@ impl Cli {
                 }
                 "scan-hook" => mode = Some(Mode::ScanHook),
                 "scan-stop" => mode = Some(Mode::ScanStop),
+                "retire-charters" => {
+                    mode = Some(Mode::RetireCharters {
+                        change_ids: Vec::new(),
+                    })
+                }
                 "--ast-grep-bin" => common.ast_grep_bin = next_value(&mut iter, "--ast-grep-bin")?,
                 "--config-dir" => {
                     common.config_dir = PathBuf::from(next_value(&mut iter, "--config-dir")?)
@@ -215,6 +227,15 @@ impl Cli {
                         .collect();
                 }
                 "--hook-response" => common.hook_response = true,
+                "--change-id" => {
+                    retire_change_ids.extend(
+                        next_value(&mut iter, "--change-id")?
+                            .split(',')
+                            .map(str::trim)
+                            .filter(|value| !value.is_empty())
+                            .map(ToString::to_string),
+                    );
+                }
                 "--changed-only" => {
                     changed_only = Some(PathBuf::from(next_value(&mut iter, "--changed-only")?));
                 }
@@ -243,6 +264,14 @@ impl Cli {
         }
 
         let mode = match mode {
+            Some(Mode::RetireCharters { .. }) => {
+                if retire_change_ids.is_empty() {
+                    return Err("retire-charters requires at least one --change-id".to_string());
+                }
+                Mode::RetireCharters {
+                    change_ids: retire_change_ids,
+                }
+            }
             Some(mode) => mode,
             None => match changed_only {
                 Some(file) => Mode::ScanFile { file },
@@ -540,6 +569,7 @@ struct CharterSource {
     #[serde(default)]
     kind: String,
     #[serde(default)]
+    #[serde(rename = "ref")]
     ref_name: String,
 }
 
@@ -1008,6 +1038,23 @@ struct StopScanResult {
     summary: ScanSummary,
     capsule: Option<String>,
     pending_reports: Vec<PendingReportSummary>,
+}
+
+#[derive(Serialize)]
+struct CharterRetirementResult {
+    version: u8,
+    clean: bool,
+    charter_dir: String,
+    history_dir: String,
+    requested_change_ids: Vec<String>,
+    archived: Vec<String>,
+    skipped: Vec<CharterRetirementSkip>,
+}
+
+#[derive(Serialize)]
+struct CharterRetirementSkip {
+    change_id: String,
+    reason: String,
 }
 
 fn approval_id_regex() -> &'static Regex {
@@ -3332,23 +3379,7 @@ fn scan_stop(common: &CommonOptions) -> Result<StopScanResult, String> {
         });
     }
 
-    let mut reports = Vec::new();
-    for entry in fs::read_dir(&pending_dir)
-        .map_err(|err| format!("failed to read {}: {err}", pending_dir.display()))?
-    {
-        let path = entry
-            .map_err(|err| format!("failed to read pending report entry: {err}"))?
-            .path();
-        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
-            continue;
-        }
-        let report = read_pending_report(&path)?;
-        if !Path::new(&report.canonical_file).exists() {
-            let _ = fs::remove_file(&path);
-            continue;
-        }
-        reports.push(report);
-    }
+    let reports = load_pending_reports(&pending_dir)?;
 
     let findings: Vec<FindingRecord> = reports
         .iter()
@@ -3379,6 +3410,172 @@ fn scan_stop(common: &CommonOptions) -> Result<StopScanResult, String> {
                 capsule: build_capsule(&report.findings),
             })
             .collect(),
+    })
+}
+
+fn load_pending_reports(pending_dir: &Path) -> Result<Vec<PendingReport>, String> {
+    let mut reports = Vec::new();
+    for entry in fs::read_dir(pending_dir)
+        .map_err(|err| format!("failed to read {}: {err}", pending_dir.display()))?
+    {
+        let path = entry
+            .map_err(|err| format!("failed to read pending report entry: {err}"))?
+            .path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+            continue;
+        }
+        let report = read_pending_report(&path)?;
+        if !Path::new(&report.canonical_file).exists() {
+            let _ = fs::remove_file(&path);
+            continue;
+        }
+        reports.push(report);
+    }
+    Ok(reports)
+}
+
+fn split_charter_refs(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn pending_report_references_change_id(report: &PendingReport, change_id: &str) -> bool {
+    report
+        .charter_ref
+        .as_deref()
+        .map(split_charter_refs)
+        .unwrap_or_default()
+        .iter()
+        .any(|value| value == change_id)
+}
+
+fn charter_history_dir(charter_dir: &Path) -> PathBuf {
+    charter_dir.parent().unwrap_or(charter_dir).join("history")
+}
+
+fn retire_charters(
+    common: &CommonOptions,
+    requested_change_ids: &[String],
+) -> Result<CharterRetirementResult, String> {
+    let charter_dir = common
+        .charter_dir
+        .clone()
+        .ok_or("retire-charters requires --charter-dir".to_string())?;
+    let history_dir = charter_history_dir(&charter_dir);
+    let report_dir = common
+        .report_dir
+        .clone()
+        .unwrap_or_else(|| common.config_dir.join(".witness-data/reports"));
+    let pending_dir = report_dir.join("pending");
+    let pending_reports = if pending_dir.is_dir() {
+        load_pending_reports(&pending_dir)?
+    } else {
+        Vec::new()
+    };
+
+    if !charter_dir.is_dir() {
+        return Ok(CharterRetirementResult {
+            version: REPORT_VERSION,
+            clean: false,
+            charter_dir: charter_dir.to_string_lossy().to_string(),
+            history_dir: history_dir.to_string_lossy().to_string(),
+            requested_change_ids: requested_change_ids.to_vec(),
+            archived: Vec::new(),
+            skipped: requested_change_ids
+                .iter()
+                .map(|change_id| CharterRetirementSkip {
+                    change_id: change_id.clone(),
+                    reason: "active charter directory does not exist".to_string(),
+                })
+                .collect(),
+        });
+    }
+
+    fs::create_dir_all(&history_dir)
+        .map_err(|err| format!("failed to create {}: {err}", history_dir.display()))?;
+
+    let charters = CharterSet::load(Some(&charter_dir))?;
+    let mut archived = Vec::new();
+    let mut skipped = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    for change_id in requested_change_ids {
+        if !seen.insert(change_id.clone()) {
+            continue;
+        }
+        if change_id.trim().is_empty() {
+            skipped.push(CharterRetirementSkip {
+                change_id: change_id.clone(),
+                reason: "blank change_id cannot be retired".to_string(),
+            });
+            continue;
+        }
+
+        let matches: Vec<&LoadedCharter> = charters
+            .items
+            .iter()
+            .filter(|item| item.charter.change_id == *change_id)
+            .collect();
+        if matches.is_empty() {
+            skipped.push(CharterRetirementSkip {
+                change_id: change_id.clone(),
+                reason: "no active charter found for change_id".to_string(),
+            });
+            continue;
+        }
+        if matches.len() > 1 {
+            skipped.push(CharterRetirementSkip {
+                change_id: change_id.clone(),
+                reason: "multiple active charters share this change_id".to_string(),
+            });
+            continue;
+        }
+
+        let pending_count = pending_reports
+            .iter()
+            .filter(|report| pending_report_references_change_id(report, change_id))
+            .count();
+        if pending_count > 0 {
+            skipped.push(CharterRetirementSkip {
+                change_id: change_id.clone(),
+                reason: format!(
+                    "{pending_count} unresolved pending report(s) still reference this change_id"
+                ),
+            });
+            continue;
+        }
+
+        let charter = matches[0];
+        if charter.charter.change_id.trim().is_empty() {
+            skipped.push(CharterRetirementSkip {
+                change_id: change_id.clone(),
+                reason: "active charter is missing change_id".to_string(),
+            });
+            continue;
+        }
+
+        let archive_name = format!("{}--{}.yml", timestamp_rfc3339(), change_id);
+        let archive_path = history_dir.join(archive_name);
+        let contents = fs::read_to_string(&charter.path)
+            .map_err(|err| format!("failed to read {}: {err}", charter.path.display()))?;
+        fs::write(&archive_path, contents)
+            .map_err(|err| format!("failed to write {}: {err}", archive_path.display()))?;
+        fs::remove_file(&charter.path)
+            .map_err(|err| format!("failed to remove {}: {err}", charter.path.display()))?;
+        archived.push(change_id.clone());
+    }
+
+    Ok(CharterRetirementResult {
+        version: REPORT_VERSION,
+        clean: skipped.is_empty(),
+        charter_dir: charter_dir.to_string_lossy().to_string(),
+        history_dir: history_dir.to_string_lossy().to_string(),
+        requested_change_ids: requested_change_ids.to_vec(),
+        archived,
+        skipped,
     })
 }
 

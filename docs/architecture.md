@@ -46,6 +46,8 @@ It runs in a worktree-isolated context and is designed for:
 - composition-root adapter rewiring
 - contract/property/stateful test additions
 
+When the repair compiles a durable constitutional fact, it must return `compiled_constitution` items that include `change_id` and `policy_files`.
+
 ## Report lifecycle
 
 Detailed findings are persisted under `${CLAUDE_PLUGIN_DATA}/reports/`:
@@ -55,6 +57,13 @@ Detailed findings are persisted under `${CLAUDE_PLUGIN_DATA}/reports/`:
 
 Whenever a file is rescanned cleanly, its pending report is deleted.
 `scan-stop` blocks if any pending reports remain.
+
+Charters follow a parallel lifecycle under `${CLAUDE_PLUGIN_DATA}/charters/`:
+
+- `active/` holds in-flight constitutional deltas that scan/repair should consume
+- `history/` stores immutable archived charters after the change has been compiled into durable policy files
+
+`retire-charters` moves a charter from `active/` to `history/` only when no pending reports still reference that `change_id`.
 
 ## Why not “just block every bad line”?
 

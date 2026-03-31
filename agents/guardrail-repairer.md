@@ -42,5 +42,5 @@ Return a JSON summary with four arrays:
 
 - `repaired`
 - `needs_charter_decision`
-- `compiled_constitution`
+- `compiled_constitution` — every item must include `change_id` and `policy_files`
 - `failed`

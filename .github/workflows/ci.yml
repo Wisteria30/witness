@@ -41,6 +41,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Install ast-grep
         run: cargo install ast-grep --locked
+      - name: Metadata and schema validation
+        run: cargo test --test metadata_validation
       - name: Format
         run: cargo fmt --check
       - name: Clippy
