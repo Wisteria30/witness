@@ -11,7 +11,7 @@
       "name": "witness",
       "source": "./",
       "description": "Detect unowned fallbacks and runtime test doubles, then route repairs to the owning layer with report-backed hooks, policies, skills, and a repair subagent.",
-      "version": "3.1.1",
+      "version": "3.2.0",
       "author": {
         "name": "Wisteria30"
       },
