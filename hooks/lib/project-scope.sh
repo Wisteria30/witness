@@ -10,7 +10,6 @@ PROJECT_CHARTER_DIR="$PROJECT_DIR/charters"
 if [ ! -f "$PROJECT_DIR/project.json" ]; then
   mkdir -p "$PROJECT_REPORT_DIR/pending" "$PROJECT_REPORT_DIR/history" "$PROJECT_REPORT_DIR/resolved"
   mkdir -p "$PROJECT_CHARTER_DIR/active" "$PROJECT_CHARTER_DIR/history"
-  printf '{"path":"%s","name":"%s"}\n' \
-    "$CLAUDE_PROJECT_DIR" "$(basename "$CLAUDE_PROJECT_DIR")" \
-    > "$PROJECT_DIR/project.json"
+  jq -n --arg path "$CLAUDE_PROJECT_DIR" --arg name "$(basename "$CLAUDE_PROJECT_DIR")" \
+    '{path: $path, name: $name}' > "$PROJECT_DIR/project.json"
 fi
