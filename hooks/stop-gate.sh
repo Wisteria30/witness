@@ -3,8 +3,9 @@ set -euo pipefail
 
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
-REPORT_DIR="$DATA_DIR/reports"
-CHARTER_DIR="$DATA_DIR/charters/active"
+source "$PLUGIN_DIR/hooks/lib/project-scope.sh"
+REPORT_DIR="$PROJECT_REPORT_DIR"
+CHARTER_DIR="$PROJECT_CHARTER_DIR/active"
 ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 
 if [ ! -x "$ENGINE_BIN" ]; then

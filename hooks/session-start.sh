@@ -3,13 +3,11 @@ set -euo pipefail
 
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
-REPORT_DIR="$DATA_DIR/reports"
-CHARTER_DIR="$DATA_DIR/charters"
+source "$PLUGIN_DIR/hooks/lib/project-scope.sh"
+REPORT_DIR="$PROJECT_REPORT_DIR"
+CHARTER_DIR="$PROJECT_CHARTER_DIR"
 ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
-
-mkdir -p "$REPORT_DIR/pending" "$REPORT_DIR/history"
-mkdir -p "$CHARTER_DIR/active" "$CHARTER_DIR/history"
 
 EXPECTED_VERSION="$(jq -r '.version // ""' "$PLUGIN_JSON" 2>/dev/null || echo "")"
 

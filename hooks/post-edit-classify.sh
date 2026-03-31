@@ -3,8 +3,9 @@ set -euo pipefail
 
 PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$PLUGIN_DIR/.witness-data}"
-REPORT_DIR="$DATA_DIR/reports"
-CHARTER_DIR="$DATA_DIR/charters/active"
+source "$PLUGIN_DIR/hooks/lib/project-scope.sh"
+REPORT_DIR="$PROJECT_REPORT_DIR"
+CHARTER_DIR="$PROJECT_CHARTER_DIR/active"
 ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 TMP_INPUT="$(mktemp)"
 trap 'rm -f "$TMP_INPUT"' EXIT
@@ -19,8 +20,6 @@ if [ -n "$_FP" ] && [ -d "$(dirname "$_FP")" ]; then
     exit 0
   fi
 fi
-
-mkdir -p "$REPORT_DIR/pending" "$REPORT_DIR/history"
 
 if [ ! -x "$ENGINE_BIN" ]; then
   echo "witness: engine missing; run setup (fail-open)" >&2
