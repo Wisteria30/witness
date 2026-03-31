@@ -219,6 +219,54 @@ fn tsx_nullish_is_violation_v3() {
 }
 
 #[test]
+fn tsx_lookup_else_default_is_violation_v3() {
+    let output =
+        run_repo_scan_file("fixtures/typescript/fallback/should_fail/lookup_else_default.tsx");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-fallback-lookup-else-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn tsx_promise_catch_default_is_violation_v3() {
+    let output =
+        run_repo_scan_file("fixtures/typescript/fallback/should_fail/promise_catch_default.tsx");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-promise-catch-default")["kind"],
+        "violation"
+    );
+}
+
+#[test]
+fn tsx_runtime_fake_is_violation_v3() {
+    let output = run_repo_scan_file("fixtures/typescript/test_double/should_fail/runtime_fake.tsx");
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-test-double-identifier")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
+fn tsx_runtime_test_support_import_is_violation_v3() {
+    let output = run_repo_scan_file(
+        "fixtures/typescript/test_double/should_fail/runtime_test_support_import.tsx",
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(
+        finding_by_rule(&value, "ts-no-test-support-import")["violation_class"],
+        "runtime_double_in_graph"
+    );
+}
+
+#[test]
 fn tsx_hidden_owner_concept_is_violation_v3() {
     let output = run_repo_scan_file("fixtures/typescript/fallback/should_fail/hidden_payload.tsx");
     assert!(!output.status.success());

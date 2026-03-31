@@ -12,8 +12,9 @@ It does not try to replace normal planning or design review. It focuses on a nar
 
 Current language support:
 
-- Python
-- TypeScript family: `.ts`, `.tsx`, `.cts`, `.mts`
+- Python: `.py`
+- TypeScript: `.ts`, `.cts`, `.mts`
+- TSX: `.tsx`
 - Go: `.go`
 - Rust: `.rs`
 
