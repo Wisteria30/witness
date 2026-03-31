@@ -70,7 +70,7 @@ The hook wrappers are responsible for fail-open behavior on engine errors.
 
 ### Rules
 
-`rules/` holds ast-grep rules. Rules should stay focused on cheap syntactic surfaces. They are not the place for deep semantics or project-scale reasoning.
+`rules/` holds ast-grep rules, organized by language subdirectory (`rules/go/`, `rules/python/`, `rules/rust/`, `rules/typescript/`). The engine scans subdirectories recursively. Rules should stay focused on cheap syntactic surfaces. They are not the place for deep semantics or project-scale reasoning.
 
 Every rule must declare metadata for:
 

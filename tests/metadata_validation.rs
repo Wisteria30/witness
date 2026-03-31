@@ -63,21 +63,28 @@ fn versions_are_consistent() {
     );
 }
 
+fn collect_yml_in_dir(dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                paths.extend(collect_yml_in_dir(&path));
+            } else if path.extension().and_then(|e| e.to_str()) == Some("yml") {
+                paths.push(path);
+            }
+        }
+    }
+    paths
+}
+
 #[test]
 fn yaml_files_are_valid() {
     let root = repo_root();
     let mut yaml_paths: Vec<PathBuf> = Vec::new();
 
     for dir in &["policy", "rules"] {
-        let dir_path = root.join(dir);
-        if dir_path.is_dir() {
-            for entry in fs::read_dir(&dir_path).unwrap() {
-                let path = entry.unwrap().path();
-                if path.extension().and_then(|e| e.to_str()) == Some("yml") {
-                    yaml_paths.push(path);
-                }
-            }
-        }
+        yaml_paths.extend(collect_yml_in_dir(&root.join(dir)));
     }
     yaml_paths.push(root.join("sgconfig.yml"));
 

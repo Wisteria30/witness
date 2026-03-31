@@ -693,6 +693,23 @@ struct RuleCatalog {
     by_id: HashMap<String, RuleInfo>,
 }
 
+fn collect_yml_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut results = Vec::new();
+    let entries =
+        fs::read_dir(dir).map_err(|err| format!("failed to read {}: {err}", dir.display()))?;
+    for entry in entries {
+        let path = entry
+            .map_err(|err| format!("failed to read entry in {}: {err}", dir.display()))?
+            .path();
+        if path.is_dir() {
+            results.extend(collect_yml_files(&path)?);
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("yml") {
+            results.push(path);
+        }
+    }
+    Ok(results)
+}
+
 impl RuleCatalog {
     fn load(config_dir: &Path) -> Result<Self, String> {
         let sgconfig = config_dir.join("sgconfig.yml");
@@ -713,17 +730,8 @@ impl RuleCatalog {
             if !dir.is_dir() {
                 continue;
             }
-            let entries = fs::read_dir(&dir)
-                .map_err(|err| format!("failed to read {}: {err}", dir.display()))?;
-            for entry in entries {
-                let path = entry
-                    .map_err(|err| {
-                        format!("failed to read rule entry in {}: {err}", dir.display())
-                    })?
-                    .path();
-                if path.extension().and_then(|ext| ext.to_str()) != Some("yml") {
-                    continue;
-                }
+            let yml_files = collect_yml_files(&dir)?;
+            for path in yml_files {
                 let text = fs::read_to_string(&path)
                     .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
                 let Some((rule_id, metadata)) = parse_rule_file(&text) else {

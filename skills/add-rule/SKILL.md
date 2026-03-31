@@ -55,7 +55,9 @@ Always check:
 
 ## Step 2: Write the rule YAML
 
-Create `rules/{lang}-no-{policy_group}-{pattern-name}.yml`.
+Create `rules/{language_dir}/{lang}-no-{policy_group}-{pattern-name}.yml`.
+
+Language directories: `go`, `python`, `rust`, `typescript`.
 
 Every rule MUST have metadata:
 
@@ -97,7 +99,7 @@ Every `should_fail` fixture must be detected. Every `should_pass` must have zero
 
 Debug a specific file:
 ```bash
-ast-grep scan --json=stream --inline-rules "$(cat rules/your-rule.yml)" path/to/file.py
+ast-grep scan --json=stream --inline-rules "$(cat rules/{language_dir}/your-rule.yml)" path/to/file.py
 ```
 
 ## Step 6: Verify with a real scan
