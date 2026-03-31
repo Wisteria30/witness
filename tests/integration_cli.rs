@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -145,6 +145,65 @@ contexts:
     );
     write_file(root, "policy/contracts.yml", "contracts: {}\n");
     fs::create_dir_all(root.join("rules")).unwrap();
+}
+
+fn active_charter_dir(root: &Path) -> PathBuf {
+    root.join(".witness-data/charters/active")
+}
+
+fn report_dir(root: &Path) -> PathBuf {
+    root.join(".witness-data/reports")
+}
+
+fn write_active_charter(root: &Path, name: &str, contents: &str) {
+    write_file(
+        root,
+        &format!(".witness-data/charters/active/{name}.yml"),
+        contents,
+    );
+}
+
+fn write_pending_report(root: &Path, canonical_file: &str, charter_ref: &str) {
+    let pending_path = report_dir(root).join("pending/report.json");
+    if let Some(parent) = pending_path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
+    let report = json!({
+        "version": 3,
+        "report_id": "wg-test-0001",
+        "created_at": "2026-04-01T00:00:00Z",
+        "status": "pending",
+        "charter_ref": charter_ref,
+        "file": "src/api/tool_use.py",
+        "canonical_file": canonical_file,
+        "summary": {
+            "files_scanned": 1,
+            "violations": 0,
+            "holes": 0,
+            "drift": 0,
+            "obligations": 1,
+            "by_kind": {
+                "obligation": 1
+            },
+            "by_file": {
+                "src/api/tool_use.py": 1
+            }
+        },
+        "findings": [
+            {
+                "kind": "obligation",
+                "file": "src/api/tool_use.py",
+                "canonical_file": canonical_file,
+                "snippet": "",
+                "message": "Pending constitutional work remains"
+            }
+        ]
+    });
+    fs::write(
+        pending_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
 }
 
 #[test]
@@ -1046,4 +1105,571 @@ contexts:
             .unwrap()
             .contains("Multiple bounded contexts")
     );
+}
+
+#[test]
+fn charter_hole_is_reported() {
+    let root = unique_temp_dir("charter-hole");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "hole",
+        r#"
+version: 1
+change_id: CHG-HOLE
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add: []
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes:
+  - kind: context
+    question: Which bounded context owns ToolUsePayload?
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "holes") >= 1);
+    assert!(value["findings"].as_array().unwrap().iter().any(|finding| {
+        finding["kind"] == "hole"
+            && finding["message"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("Unresolved charter hole")
+    }));
+}
+
+#[test]
+fn charter_contract_without_compile_is_obligation() {
+    let root = unique_temp_dir("charter-contract-uncompiled");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "contract",
+        r#"
+version: 1
+change_id: CHG-CONTRACT
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add:
+    - id: http.new_payload.v1
+      kind: shape
+      compatibility: exact
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes: []
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(summary_count(&value, "obligations"), 1);
+    assert!(
+        finding_by_kind(&value, "obligation")["message"]
+            .as_str()
+            .unwrap()
+            .contains("policy/contracts.yml has not been updated")
+    );
+}
+
+#[test]
+fn charter_contract_missing_schema_is_obligation() {
+    let root = unique_temp_dir("charter-contract-schema");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "policy/contracts.yml",
+        r#"
+contracts:
+  http.tool_use_payload.v1:
+    kind: shape
+    context: api_boundary
+    owner_layer: boundary
+    schema: schemas/http/tool_use_payload.v1.json
+    compatibility: exact
+    witnesses:
+      - tests/contracts/http/test_tool_use_payload_schema.py
+"#,
+    );
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "contract",
+        r#"
+version: 1
+change_id: CHG-CONTRACT-SCHEMA
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add:
+    - id: http.tool_use_payload.v1
+      kind: shape
+      compatibility: exact
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes: []
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "obligations") >= 1);
+    assert!(value["findings"].as_array().unwrap().iter().any(|finding| {
+        finding["kind"] == "obligation"
+            && finding["message"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("requires schema")
+    }));
+}
+
+#[test]
+fn charter_defaults_approval_without_compile_is_obligation() {
+    let root = unique_temp_dir("charter-defaults");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "defaults",
+        r#"
+version: 1
+change_id: CHG-DEFAULT
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add: []
+defaults:
+  approvals:
+    - REQ-999
+adapters:
+  add: []
+holes: []
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(summary_count(&value, "obligations"), 1);
+    assert!(
+        finding_by_kind(&value, "obligation")["message"]
+            .as_str()
+            .unwrap()
+            .contains("policy/defaults.yml")
+    );
+}
+
+#[test]
+fn charter_adapter_without_compile_is_obligation() {
+    let root = unique_temp_dir("charter-adapter");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "adapter",
+        r#"
+version: 1
+change_id: CHG-ADAPTER
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add: []
+defaults:
+  approvals: []
+adapters:
+  add:
+    - RedisUserRepository
+holes: []
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(summary_count(&value, "obligations"), 1);
+    assert!(
+        finding_by_kind(&value, "obligation")["message"]
+            .as_str()
+            .unwrap()
+            .contains("policy/adapters.yml")
+    );
+}
+
+#[test]
+fn charter_context_mismatch_is_drift() {
+    let root = unique_temp_dir("charter-drift");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "policy/contexts.yml",
+        r#"
+contexts:
+  api_boundary:
+    paths:
+      - "src/api/**"
+    vocabulary:
+      nouns:
+        - Payload
+      verbs:
+        - parse
+  ordering:
+    paths:
+      - "src/domain/ordering/**"
+    vocabulary:
+      nouns:
+        - Order
+      verbs:
+        - place
+"#,
+    );
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "context",
+        r#"
+version: 1
+change_id: CHG-DRIFT
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments:
+    src/api/tool_use.py: ordering
+contracts:
+  add: []
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes: []
+"#,
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "scan-file",
+            "--file",
+            &file_str,
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "drift") >= 1);
+    assert!(value["findings"].as_array().unwrap().iter().any(|finding| {
+        finding["kind"] == "drift"
+            && finding["message"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("Charter assigns")
+    }));
+}
+
+#[test]
+fn public_symbol_without_export_and_without_charter_is_drift() {
+    let root = unique_temp_dir("public-symbol-drift");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+
+    let file = root.join("src/api/tool_use.py");
+    let config = root.to_string_lossy().to_string();
+    let file_str = file.to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &["scan-file", "--file", &file_str, "--config-dir", &config],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert!(summary_count(&value, "drift") >= 1);
+    assert!(value["findings"].as_array().unwrap().iter().any(|finding| {
+        finding["kind"] == "drift"
+            && finding["message"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("missing an explicit export witness")
+    }));
+}
+
+#[test]
+fn retire_charter_archives_when_clean() {
+    let root = unique_temp_dir("retire-clean");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "change",
+        r#"
+version: 1
+change_id: CHG-RETIRE
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add: []
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes: []
+"#,
+    );
+
+    let config = root.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let report_str = report_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "retire-charters",
+            "--change-id",
+            "CHG-RETIRE",
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+            "--report-dir",
+            &report_str,
+        ],
+    );
+    assert!(output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(value["clean"], true);
+    assert_eq!(value["archived"][0], "CHG-RETIRE");
+    assert!(!active_charter_dir(&root).join("change.yml").exists());
+    let history_dir = root.join(".witness-data/charters/history");
+    let entries: Vec<_> = fs::read_dir(&history_dir).unwrap().collect();
+    assert_eq!(entries.len(), 1);
+}
+
+#[test]
+fn retire_charter_blocks_when_pending_report_references_change_id() {
+    let root = unique_temp_dir("retire-blocked");
+    write_minimal_project(&root);
+    write_file(
+        &root,
+        "src/api/tool_use.py",
+        "class ToolUsePayload:\n    pass\n",
+    );
+    write_active_charter(
+        &root,
+        "change",
+        r#"
+version: 1
+change_id: CHG-RETIRE
+constitution_mode: extend
+surfaces:
+  public_symbols: {}
+contexts:
+  assignments: {}
+contracts:
+  add: []
+defaults:
+  approvals: []
+adapters:
+  add: []
+holes: []
+"#,
+    );
+    write_pending_report(
+        &root,
+        &root.join("src/api/tool_use.py").to_string_lossy(),
+        "CHG-RETIRE",
+    );
+
+    let config = root.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let report_str = report_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "retire-charters",
+            "--change-id",
+            "CHG-RETIRE",
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+            "--report-dir",
+            &report_str,
+        ],
+    );
+    assert!(!output.status.success());
+    let value = stdout_json(&output);
+    assert_eq!(value["clean"], false);
+    assert!(
+        value["skipped"][0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("unresolved pending report")
+    );
+    assert!(active_charter_dir(&root).join("change.yml").exists());
+}
+
+#[test]
+fn retire_charters_requires_change_id_argument() {
+    let root = unique_temp_dir("retire-missing-change-id");
+    write_minimal_project(&root);
+    let config = root.to_string_lossy().to_string();
+    let charter_str = active_charter_dir(&root).to_string_lossy().to_string();
+    let report_str = report_dir(&root).to_string_lossy().to_string();
+    let output = run_engine_in(
+        &root,
+        &[
+            "retire-charters",
+            "--config-dir",
+            &config,
+            "--charter-dir",
+            &charter_str,
+            "--report-dir",
+            &report_str,
+        ],
+    );
+    assert!(!output.status.success());
+    assert!(stderr_text(&output).contains("retire-charters requires at least one --change-id"));
 }

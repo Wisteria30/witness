@@ -9,6 +9,14 @@ argument-hint: [path]
 
 Run a full witness scan for `$ARGUMENTS` if provided, otherwise for the current project root.
 
+## Current state
+
+Active charters:
+!`ls ${CLAUDE_PLUGIN_DATA}/charters/active/ 2>/dev/null || echo "(none)"`
+
+Pending reports:
+!`ls ${CLAUDE_PLUGIN_DATA}/reports/pending/ 2>/dev/null || echo "(none)"`
+
 **REPORT ONLY.**
 Do not fix, repair, or modify any code.
 Do not invoke repair.

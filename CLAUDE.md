@@ -34,6 +34,7 @@ cargo test --test metadata_validation
 ./bin/witness-engine scan-file --file path/to/file.py --config-dir .
 cat hook-input.json | ./bin/witness-engine scan-hook --config-dir . --report-dir /tmp/witness-reports
 ./bin/witness-engine scan-stop --config-dir . --report-dir /tmp/witness-reports
+./bin/witness-engine retire-charters --change-id CHG-123 --config-dir . --charter-dir /tmp/witness-charters/active --report-dir /tmp/witness-reports
 
 scripts/release.sh
 ```
@@ -59,6 +60,7 @@ Subcommands:
 - `scan-tree` — full project scan with ripgrep prefiltering and grouped ast-grep invocation
 - `scan-hook` — read Claude Code hook JSON from stdin, scan the changed file, and optionally emit a hook-ready JSON block response
 - `scan-stop` — inspect pending report files and block `Stop` / `SubagentStop` when unresolved work remains
+- `retire-charters` — archive compiled active charters into `history/` once no pending reports still reference their `change_id`
 
 The engine exit contract is strict:
 
@@ -102,6 +104,7 @@ Broad planning belongs to Claude Code Plan Mode or other planning systems.
 `witness` does not replace them.
 
 `/witness:charter` compiles only the minimal witness-relevant intent (`ΔK_w`) from an approved plan and stores it under `${CLAUDE_PLUGIN_DATA}/charters/active/`.
+Compiled charters stay active only while they are needed by scan/repair. After the durable constitutional facts are compiled into policy files and no pending reports still reference the change, retire them into `${CLAUDE_PLUGIN_DATA}/charters/history/`.
 
 A charter may specify only the narrow constitutional delta witness needs:
 
@@ -127,8 +130,10 @@ The main session should only receive a compact capsule and a path to a persisted
 
 - `/witness:charter` compiles a sparse charter from an approved broad plan
 - `/witness:scan` runs a full constitutional scan in a forked context and summarizes violations, holes, drift, and obligations
-- `/witness:repair` dispatches 5 parallel `guardrail-repairer` agents (worktree-isolated) to fix all pending reports at once
-- `/witness:shape` performs read-only structural diagnosis (principal role, context blur, missing witnesses)
+- `/witness:repair` is hole-first: if pending reports are all holes, or holes are the majority, stop and resolve charter decisions before agent fan-out
+- `/witness:repair` dispatches 5 parallel `guardrail-repairer` agents (worktree-isolated) only for the reports that are ready for repair
+- `/witness:retire` is the manual escape hatch for archiving compiled active charters through the engine retirement command
+- `/witness:shape` performs read-only structural diagnosis (principal role, context blur, missing witnesses) and can emit a draft `witness-delta` block
 - `guardrail-repairer` is the dedicated repair subagent for isolated, high-volume owner-layer refactors
 
 **After `/witness:scan` returns, never auto-start repairs.** Present the report and wait for the user to choose whether to run `/witness:repair`.

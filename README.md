@@ -3,7 +3,8 @@
 **Catch unsafe defaults, swallowed failures, leaked test doubles, and missing interface promises before they ship.**
 
 `witness` is a Claude Code plugin for teams that want AI-generated code to stay aligned with the architecture of the repository.
-It does not try to replace normal planning or design review. It focuses on a narrower job:
+It does not try to replace normal planning or design review. Broad planning stays in Claude Code Plan Mode or your normal design workflow.
+`witness` focuses on the narrower constitutional delta:
 
 - stop production code from silently turning missing data or errors into defaults
 - stop test-only substitutes from leaking into runtime code
@@ -95,7 +96,7 @@ If the scan reports `violation`, `drift`, or `obligation`, run:
 /witness:repair
 ```
 
-If the scan reports `hole`, answer that missing design decision first. `witness` is telling you it cannot safely guess.
+If the scan reports `hole`, answer that missing design decision first with `/witness:charter`. `witness` is telling you it cannot safely guess.
 
 ### 4. For changes that add new public API or new architecture rules, create a charter first
 
@@ -113,6 +114,8 @@ first get the broad plan approved in your normal workflow, then run:
 ```
 
 That records only the change-specific architecture decisions that `witness` needs.
+Active charters live under `${CLAUDE_PLUGIN_DATA}/charters/active/` while the change is in flight.
+Once the constitutional change is compiled into durable policy files and no pending reports still reference it, the charter moves to `${CLAUDE_PLUGIN_DATA}/charters/history/`.
 
 ### 5. Stop only when the repo is clean
 
@@ -144,6 +147,7 @@ Use it for:
 - contract/policy updates that should happen in the same patch
 
 Do not start here. Run `/witness:scan` first so the repair work has a clear target.
+If the pending reports are all `hole`, or holes are the majority, `repair` stops before agent fan-out and tells you to resolve the charter decisions first.
 
 ### `/witness:charter`
 
@@ -157,6 +161,19 @@ Use it for:
 - deciding which bounded context a new concept belongs to
 
 Do not use it for routine bug fixes that stay inside the current architecture.
+`/witness:charter` records the minimal witness-relevant delta only. It is not a replacement for a broad implementation plan.
+
+### `/witness:retire`
+
+Use this when a charter has already been compiled into durable policy and you want to archive it out of `charters/active/`.
+
+Use it for:
+
+- cleaning up stale active charters after a feature lands
+- manually retiring a charter that `repair` left active because retirement was ambiguous
+- auditing which in-flight charters still affect future scan/repair runs
+
+`/witness:retire` uses the engine's `retire-charters` command rather than moving files by hand.
 
 ### `/witness:shape`
 
@@ -169,6 +186,7 @@ Use it for:
 - modules that seem to blend multiple bounded contexts
 
 `shape` is read-only. It helps you understand the problem before you decide how to change the code.
+When it detects a likely constitutional extension, it emits a minimal draft `witness-delta` block you can feed into `/witness:charter`.
 
 ### `/witness:add-rule`
 
@@ -188,7 +206,7 @@ Use this when you want to teach witness a new cheap syntactic detection rule.
 The normal loop is:
 
 1. Run `/witness:scan`.
-2. If you get `hole`, answer the missing design question.
+2. If you get `hole`, answer the missing design question with `/witness:charter`.
 3. If you get `violation`, `drift`, or `obligation`, run `/witness:repair`.
 4. Run `/witness:scan` again until it is clean.
 

@@ -18,6 +18,13 @@ The active charter must be written to:
 ${CLAUDE_PLUGIN_DATA}/charters/active/<change-id>.yml
 ```
 
+Rules:
+
+- create `${CLAUDE_PLUGIN_DATA}/charters/active/` if it does not exist
+- if a charter with the same `change_id` already exists, update it in place instead of creating duplicates
+- keep the filename stable and derived from `change_id` alone
+- never leave anonymous files such as `.yml` or timestamp-only files in `active/`
+
 ## Inputs
 
 Use one of these, in order:
@@ -142,6 +149,9 @@ Report:
 - which constitutional judgements were captured
 - which holes remain, if any
 - the saved charter path
+- whether the charter is expected to stay temporary until it is compiled into durable policy
 - the next step: implement, then run `/witness:scan`
+
+If the change later compiles durable constitutional facts into `policy/*.yml`, retire the matching charter from `charters/active/` into `charters/history/`.
 
 Stop there.

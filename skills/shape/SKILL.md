@@ -82,7 +82,7 @@ Organize the output as:
 - `principal-role conflicts`
 - `recommended charter delta` (if constitutional changes are needed)
 
-If the result implies a new charter, recommend `/witness:charter` and provide a minimal draft `witness-delta` block.
+If the result implies a new charter, recommend `/witness:charter` and provide a minimal draft `witness-delta` block in a fenced code block so it can be copied directly into the next step.
 
 ### 6. Stop
 Never modify code. Never run repair. Never update policy files.
