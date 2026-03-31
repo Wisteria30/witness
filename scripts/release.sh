@@ -26,7 +26,7 @@ jq --arg v "$VERSION" '.version = $v' "$ROOT/.claude-plugin/plugin.json" > "$ROO
 mv "$ROOT/.claude-plugin/plugin.json.tmp" "$ROOT/.claude-plugin/plugin.json"
 
 # marketplace.json (jq)
-jq --arg v "$VERSION" '.plugins[0].version = $v' "$ROOT/marketplace.json" > "$ROOT/marketplace.json.tmp"
-mv "$ROOT/marketplace.json.tmp" "$ROOT/marketplace.json"
+jq --arg v "$VERSION" '.plugins[0].version = $v' "$ROOT/.claude-plugin/marketplace.json" > "$ROOT/.claude-plugin/marketplace.json.tmp"
+mv "$ROOT/.claude-plugin/marketplace.json.tmp" "$ROOT/.claude-plugin/marketplace.json"
 
 echo "witness: version synced to $VERSION"
