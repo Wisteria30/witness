@@ -8,15 +8,15 @@ argument-hint: [report-dir]
 
 Batch repair pending reports in parallel.
 
-**Report directory**: Use `$ARGUMENTS` if provided, otherwise `${CLAUDE_PLUGIN_DATA}/reports/pending`.
+**Report directory**: Use `$ARGUMENTS` if provided, otherwise `$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/reports/pending`.
 
 ## Current state
 
 Pending reports:
-!`ls ${ARGUMENTS:-${CLAUDE_PLUGIN_DATA}/reports/pending}/*.json 2>/dev/null || echo "(none)"`
+!`ls ${ARGUMENTS:-$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/reports/pending}/*.json 2>/dev/null || echo "(none)"`
 
 Active charters:
-!`ls ${CLAUDE_PLUGIN_DATA}/charters/active/ 2>/dev/null || echo "(none)"`
+!`ls $($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/charters/active/ 2>/dev/null || echo "(none)"`
 
 This skill consumes the active charter when present. It does not create or guess missing charter decisions.
 
@@ -25,7 +25,8 @@ This skill consumes the active charter when present. It does not create or guess
 ### 1. Discover pending reports
 
 ```bash
-ls ${ARGUMENTS:-${CLAUDE_PLUGIN_DATA}/reports/pending}/*.json
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
+ls ${ARGUMENTS:-${WITNESS_DATA}/reports/pending}/*.json
 ```
 
 If no reports exist, say `No pending reports found.` and stop.
@@ -49,7 +50,7 @@ Group repairable reports into **5 batches** by distributing evenly.
 Reports affecting the same file **must** go in the same batch to avoid merge conflicts.
 
 ### 3. Load the active charter
-If `${CLAUDE_PLUGIN_DATA}/charters/active` exists, read all active charter files.
+If `${WITNESS_DATA}/charters/active` exists, read all active charter files.
 For each agent batch, derive the smallest relevant charter slice:
 
 - touched files
@@ -125,11 +126,12 @@ After all automated repairs and charter decisions are resolved:
 3. run:
 
 ```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
 ${CLAUDE_PLUGIN_ROOT}/bin/witness-engine retire-charters \
   --change-id <change-id> \
   --config-dir ${CLAUDE_PLUGIN_ROOT} \
-  --charter-dir ${CLAUDE_PLUGIN_DATA}/charters/active \
-  --report-dir ${CLAUDE_PLUGIN_DATA}/reports
+  --charter-dir ${WITNESS_DATA}/charters/active \
+  --report-dir ${WITNESS_DATA}/reports
 ```
 
 Only retire a charter when the command succeeds. If retirement is skipped, report why and leave the charter active.

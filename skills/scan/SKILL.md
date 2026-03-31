@@ -12,10 +12,10 @@ Run a full witness scan for `$ARGUMENTS` if provided, otherwise for the current 
 ## Current state
 
 Active charters:
-!`ls ${CLAUDE_PLUGIN_DATA}/charters/active/ 2>/dev/null || echo "(none)"`
+!`ls $($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/charters/active/ 2>/dev/null || echo "(none)"`
 
 Pending reports:
-!`ls ${CLAUDE_PLUGIN_DATA}/reports/pending/ 2>/dev/null || echo "(none)"`
+!`ls $($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/reports/pending/ 2>/dev/null || echo "(none)"`
 
 **REPORT ONLY.**
 Do not fix, repair, or modify any code.
@@ -27,22 +27,27 @@ The scan must evaluate the repo constitution and the active charter if present.
 ## Workflow
 
 ### 1. Locate the active charter directory
-If `${CLAUDE_PLUGIN_DATA}/charters/active` exists, use it.
+Resolve the project-scoped data directory first:
+```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
+```
+If `${WITNESS_DATA}/charters/active` exists, use it.
 If it does not exist, continue without a charter.
 
 ### 2. Run the engine
 Preferred v3 command:
 
 ```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
 ${CLAUDE_PLUGIN_ROOT}/bin/witness-engine scan-tree \
   --root ${ARGUMENTS:-.} \
   --config-dir ${CLAUDE_PLUGIN_ROOT} \
-  --charter-dir ${CLAUDE_PLUGIN_DATA}/charters/active \
-  --report-dir ${CLAUDE_PLUGIN_DATA}/reports
+  --charter-dir ${WITNESS_DATA}/charters/active \
+  --report-dir ${WITNESS_DATA}/reports
 ```
 
 ### 3. Enumerate pending reports
-List files under `${CLAUDE_PLUGIN_DATA}/reports/pending/`.
+List files under `${WITNESS_DATA}/reports/pending/`.
 
 ### 4. Summarize findings by category
 Summarize by:

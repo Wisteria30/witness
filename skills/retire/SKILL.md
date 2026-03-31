@@ -12,10 +12,10 @@ Archive active charters that no longer need to influence `scan` or `repair`.
 ## Current state
 
 Active charters:
-!`ls ${CLAUDE_PLUGIN_DATA}/charters/active/ 2>/dev/null || echo "(none)"`
+!`ls $($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/charters/active/ 2>/dev/null || echo "(none)"`
 
 Pending reports:
-!`ls ${CLAUDE_PLUGIN_DATA}/reports/pending/ 2>/dev/null || echo "(none)"`
+!`ls $($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)/reports/pending/ 2>/dev/null || echo "(none)"`
 
 This skill is a thin user-facing wrapper around the authoritative engine command:
 
@@ -28,7 +28,11 @@ Do not move charter files manually when the engine command can decide eligibilit
 ## Workflow
 
 ### 1. Discover active charters
-Read `${CLAUDE_PLUGIN_DATA}/charters/active/` if it exists.
+Resolve the project-scoped data directory first:
+```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
+```
+Read `${WITNESS_DATA}/charters/active/` if it exists.
 
 If there are no active charters, say `No active charters found.` and stop.
 
@@ -46,23 +50,24 @@ Otherwise:
 Run:
 
 ```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
 ${CLAUDE_PLUGIN_ROOT}/bin/witness-engine retire-charters \
   --change-id <change-id> \
   --config-dir ${CLAUDE_PLUGIN_ROOT} \
-  --charter-dir ${CLAUDE_PLUGIN_DATA}/charters/active \
-  --report-dir ${CLAUDE_PLUGIN_DATA}/reports
+  --charter-dir ${WITNESS_DATA}/charters/active \
+  --report-dir ${WITNESS_DATA}/reports
 ```
 
 Use one `--change-id` flag for each selected change id.
 
-The engine decides whether the charter can move from `charters/active/` to `charters/history/`.
+The engine decides whether the charter can move from `${WITNESS_DATA}/charters/active/` to `${WITNESS_DATA}/charters/history/`.
 Do not second-guess or reimplement that decision in the skill.
 
 ### 4. Output summary
 Report:
 
 - which `change_id` values were archived
-- which files now live under `${CLAUDE_PLUGIN_DATA}/charters/history/`
+- which files now live under `${WITNESS_DATA}/charters/history/`
 - which `change_id` values were skipped and why
 - which active charters remain
 

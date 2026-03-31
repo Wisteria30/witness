@@ -12,15 +12,20 @@ This skill is **not** a general planner.
 Do **not** produce implementation sequencing, task breakdowns, rollout plans, test plans, or milestones.
 Only extract the witness-relevant constitutional delta.
 
+Resolve the project-scoped data directory first:
+```bash
+WITNESS_DATA=$($CLAUDE_PLUGIN_ROOT/hooks/lib/resolve-project-dir.sh)
+```
+
 The active charter must be written to:
 
 ```text
-${CLAUDE_PLUGIN_DATA}/charters/active/<change-id>.yml
+${WITNESS_DATA}/charters/active/<change-id>.yml
 ```
 
 Rules:
 
-- create `${CLAUDE_PLUGIN_DATA}/charters/active/` if it does not exist
+- create `${WITNESS_DATA}/charters/active/` if it does not exist
 - if a charter with the same `change_id` already exists, update it in place instead of creating duplicates
 - keep the filename stable and derived from `change_id` alone
 - never leave anonymous files such as `.yml` or timestamp-only files in `active/`
@@ -110,7 +115,7 @@ Otherwise derive a stable one from the plan title or the smallest distinctive no
 Write YAML to:
 
 ```text
-${CLAUDE_PLUGIN_DATA}/charters/active/<change-id>.yml
+${WITNESS_DATA}/charters/active/<change-id>.yml
 ```
 
 Target shape:
@@ -152,6 +157,6 @@ Report:
 - whether the charter is expected to stay temporary until it is compiled into durable policy
 - the next step: implement, then run `/witness:scan`
 
-If the change later compiles durable constitutional facts into `policy/*.yml`, retire the matching charter from `charters/active/` into `charters/history/`.
+If the change later compiles durable constitutional facts into `policy/*.yml`, retire the matching charter from `${WITNESS_DATA}/charters/active/` into `${WITNESS_DATA}/charters/history/`.
 
 Stop there.
