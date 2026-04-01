@@ -11,7 +11,7 @@
       "name": "witness",
       "source": "./",
       "description": "Detect constitutional drift in public surfaces, contracts, contexts, unsafe defaults, and runtime test doubles, then route repair-ready findings to the owning layer.",
-      "version": "3.3.0",
+      "version": "3.4.0",
       "author": {
         "name": "Wisteria30"
       },

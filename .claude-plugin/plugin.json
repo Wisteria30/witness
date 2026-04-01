@@ -1,6 +1,6 @@
 {
   "name": "witness",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Repair-first constitutional guardrails for public surfaces, contracts, context boundaries, unsafe defaults, and runtime test doubles in Claude Code projects.",
   "author": {
     "name": "Wisteria30"
