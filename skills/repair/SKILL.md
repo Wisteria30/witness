@@ -86,8 +86,9 @@ After all 5 agents complete:
 3. Collect all `compiled_constitution` items from all agents. Every item must include:
    - `change_id`
    - `policy_files`
-4. Summarize:
-   - how many reports were resolved
+4. **Run an engine re-scan** (`scan-tree`) on the main workspace. The engine automatically removes pending reports for files that are now clean. Do not manually move, delete, or touch report files.
+5. Summarize:
+   - how many pending reports were cleared by the re-scan
    - how many remain
    - which remedies were applied
    - which constitutional files were updated
@@ -121,7 +122,7 @@ Based on the answer:
 ### 7. Final summary
 After all automated repairs and charter decisions are resolved:
 
-1. re-scan to verify the repaired files are clean
+1. Run a final engine re-scan (`scan-tree`). The engine removes pending reports for clean files automatically. Do not manually touch report files.
 2. collect the unique `change_id` values from `compiled_constitution`
 3. run:
 

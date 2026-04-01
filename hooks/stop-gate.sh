@@ -12,6 +12,21 @@ if [ ! -x "$ENGINE_BIN" ]; then
   exit 0
 fi
 
+# If every pending report already existed at session start, pass.
+# The stop gate only blocks on reports created during this session.
+BASELINE="$REPORT_DIR/.session-baseline"
+if [ -f "$BASELINE" ]; then
+  CURRENT="$(ls "$REPORT_DIR/pending/"*.json 2>/dev/null | sort)"
+  if [ -n "$CURRENT" ]; then
+    NEW_REPORTS="$(comm -23 <(echo "$CURRENT") "$BASELINE")"
+    if [ -z "$NEW_REPORTS" ]; then
+      exit 0
+    fi
+  else
+    exit 0
+  fi
+fi
+
 set +e
 CMD=("$ENGINE_BIN" scan-stop --config-dir "$PLUGIN_DIR" --report-dir "$REPORT_DIR" --hook-response)
 if [ -d "$CHARTER_DIR" ]; then

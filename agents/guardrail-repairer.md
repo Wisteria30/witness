@@ -19,8 +19,8 @@ Your job is to remove unowned elimination, unproved substitution, hidden owner-l
 1. Read the pending report(s) or target file(s) first.
 2. Read the relevant charter slice if one was provided.
 3. Follow the doctrine exactly.
-4. Re-run the relevant scan for each repaired file before finishing.
-5. If the scan returns clean and the constitution is coherent, delete the corresponding pending report JSON.
+4. Re-run the relevant scan for each repaired file before finishing. The engine re-scan automatically removes pending reports for clean files.
+5. **Never directly touch report files.** Do not `mv`, `rm`, `cp`, or write to the reports directory. Report lifecycle is owned exclusively by the engine.
 6. Never preserve the violating line.
 7. Never rename a mock/stub/fake to dodge detection.
 8. Never rewrite one fallback syntax into another fallback syntax.

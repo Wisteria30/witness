@@ -9,6 +9,11 @@ CHARTER_DIR="$PROJECT_CHARTER_DIR"
 ENGINE_BIN="$PLUGIN_DIR/bin/witness-engine"
 PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
 
+# Snapshot existing pending reports so the stop gate only blocks on
+# reports created during this session, not pre-existing ones.
+mkdir -p "$REPORT_DIR/pending"
+ls "$REPORT_DIR/pending/"*.json 2>/dev/null | sort > "$REPORT_DIR/.session-baseline" || true
+
 EXPECTED_VERSION="$(jq -r '.version // ""' "$PLUGIN_JSON" 2>/dev/null || echo "")"
 
 if [ -x "$ENGINE_BIN" ]; then
