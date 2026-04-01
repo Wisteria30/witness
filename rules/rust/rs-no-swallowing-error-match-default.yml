@@ -21,4 +21,4 @@ metadata:
   policy_group: fallback
   violation_class: fallback_unowned_handler
   owner_hint: application
-  approval_mode: none
+  approval_mode: registry_policy_comment

@@ -443,7 +443,7 @@ fn bundled_policy_files_are_semantically_consistent() {
 fn skill_docs_reference_stable_charter_paths_and_retirement() {
     let charter_skill = read_text("skills/charter/SKILL.md");
     assert!(
-        charter_skill.contains("${CLAUDE_PLUGIN_DATA}/charters/active/<change-id>.yml"),
+        charter_skill.contains("${WITNESS_DATA}/charters/active/<change-id>.yml"),
         "charter skill should document the stable active charter path"
     );
     assert!(

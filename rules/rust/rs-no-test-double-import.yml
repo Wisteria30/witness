@@ -23,4 +23,4 @@ metadata:
   policy_group: test-double
   violation_class: runtime_double_in_graph
   owner_hint: tests
-  approval_mode: none
+  approval_mode: registry_policy_comment

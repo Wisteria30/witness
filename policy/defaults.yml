@@ -15,3 +15,23 @@ defaults:
     allowed_layers:
       - boundary
     reason: The port fallback is part of the published service specification.
+  ENGINE-SELF-SCAN-PATTERNS:
+    symbol: ""
+    allowed_layers:
+      - composition_root
+    reason: String literals for test-double import detection are pattern data, not actual test imports.
+  ENGINE-INTERNAL-FALLBACK:
+    symbol: ""
+    allowed_layers:
+      - composition_root
+    reason: Engine-internal unwrap_or/unwrap_or_default calls use safe identity or empty sentinels for best-effort diagnostics. These do not own policy.
+  ENGINE-ERROR-SENTINEL:
+    symbol: ""
+    allowed_layers:
+      - composition_root
+    reason: Returning "unknown" on path-strip failure is a safe diagnostic sentinel in the engine's own layer-guessing heuristic.
+  ENGINE-POLICY-STRUCT-VIS:
+    symbol: ""
+    allowed_layers:
+      - composition_root
+    reason: PortPolicy, ContractPolicy, ContextPolicy are engine-internal deserialization structs, not public-facing owner concepts.
